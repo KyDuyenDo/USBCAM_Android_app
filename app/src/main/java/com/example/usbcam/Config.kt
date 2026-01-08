@@ -1,44 +1,46 @@
 package com.example.usbcam
 
 object Config {
-    // --- OPTICAL FLOW & KINEMATICS ---
-    // --- OPTICAL FLOW & KINEMATICS ---
-    const val MAX_TRACKING_POINTS = 50
-    const val QUALITY_LEVEL = 0.005
-    const val MIN_DISTANCE = 5.0
+    // --- CẤU HÌNH OPTICAL FLOW ---
+    const val MAX_TRACKING_POINTS = 100
+    const val QUALITY_LEVEL = 0.01
+    const val MIN_DISTANCE = 10.0
+    const val FLOW_WIN_SIZE = 31
 
-    const val FLOW_WIN_SIZE = 51
+    // --- BỘ LỌC CHỐNG RUNG & TRỤC X ---
+    const val MAX_Y_TO_X_RATIO = 0.6f
+    const val MAX_VERTICAL_SHAKE_PIXEL = 5.0f
 
-    // --- PHYSICS ENGINE ---
-    const val COASTING_MAX_FRAMES = 15
-    const val EDGE_THRESHOLD_PERCENT = 0.15f
+    // --- THUẬT TOÁN CONSISTENCY ---
+    const val MIN_DIRECTIONAL_RATIO = 0.7f
 
-    const val VELOCITY_SMOOTHING = 0.5f
+    // --- NGƯỠNG VẬN TỐC (VELOCITY THRESHOLD) ---
+    // Tốc độ tối thiểu để coi là đang di chuyển (pixel/frame)
+    const val VELOCITY_X_THRESHOLD_SLIDING = 3.0f 
+    // Tốc độ để xác định vật đã dừng hẳn
+    const val VELOCITY_X_THRESHOLD_SETTLED = 0.8f
 
-    const val MIN_VELOCITY_THRESHOLD = 0.3f // Reduced sensitivity to ignore jitter
-    const val MIN_ENTRY_VELOCITY = 2.0f // Strict Directional Velocity
+    // --- NGƯỠNG KHOẢNG CÁCH TÍCH LŨY (QUAN TRỌNG NHẤT) ---
+    // Từ IDLE -> SLIDING: Chỉ cần di chuyển 30px là bắt (để nhạy với vật mới)
+    const val MIN_DISTANCE_TO_START_SLIDING = 30.0 
+    
+    // Từ SUCCESS/ERROR -> SLIDING: Cần di chuyển 150px mới Reset (Chống lắc lư)
+    // 150px trên độ rộng 640px là khoảng 1/4 màn hình -> Cần đẩy dứt khoát.
+    const val MIN_DISTANCE_TO_RESET_RESULT = 150.0
 
-    // --- MOTION ALLOCATION ---
-    const val MAX_VERTICAL_VELOCITY = 8.0f // Increased tolerance for vertical shake
-    const val HORIZONTAL_DOMINANCE_RATIO = 1.5f // Relaxed horizontal check
+    // --- ĐỘ TRỄ FRAME ---
+    const val FRAMES_TO_SETTLE = 6        // Cần 6 frame tĩnh để chốt và quét
 
-    // --- ROBUSTNESS ---
-    const val REPLENISH_THRESHOLD = 25
-    const val MAX_DEVIATION_PIXEL = 10.0f
-    const val EDGE_INTERRUPT_ZONE_PERCENT = 0.20f // Left/Right 20%
-    const val ENTRY_GRACE_FRAMES = 10
+    // --- THỜI GIAN CHỜ ---
+    const val SCAN_TIMEOUT_MS = 3000L
 
-    // --- LOGIC ---
-    const val VOTING_BUFFER_SIZE = 3
-    const val DEDUPLICATION_WINDOW_MS = 3000L
+    // --- LOGIC QUÉT & ẢNH ---
     const val MIN_PO_LENGTH = 5
     const val MAX_PO_LENGTH = 15
-    const val PO_TIMEOUT_MS = 8000L
-
-    // --- PERFORMANCE & THERMAL CONTROL ---
-    const val MAX_PROCESSING_FPS = 20
+    const val MAX_PROCESSING_FPS = 15
     const val SCAN_THROTTLE_MS = 500L
-
-    // --- AUDIO ---
-    const val BEEP_VOLUME = 50 // 0-100
+    const val BEEP_VOLUME = 80
+    
+    // --- TĂNG SÁNG ẢNH ---
+    const val BRIGHTNESS_BOOST = 40f 
 }
