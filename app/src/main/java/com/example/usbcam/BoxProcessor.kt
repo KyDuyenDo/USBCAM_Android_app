@@ -38,6 +38,7 @@ class BoxProcessor {
 
     // Biến logic tích lũy
     private var accumulatedIncomingDistance = 0.0
+    private var maxIncomingVelocityX = 0.0 // [MỚI] Theo dõi vận tốc lớn nhất trong đợt tích lũy
     private var settledFrameCounter = 0
     private var stateStartTime = 0L
     private val poBuffer = Collections.synchronizedList(ArrayList<String>())
@@ -201,20 +202,25 @@ class BoxProcessor {
         outgoingVelocityX = 0.0
         isIncomingDominant = false
         accumulatedIncomingDistance = 0.0
+        maxIncomingVelocityX = 0.0
     }
 
     private fun handleStateMachine(now: Long) {
 
         // --- 1. KILL SWITCH (Ngắt khẩn cấp khi rung lắc ngược) ---
-        // Nếu phát hiện chuyển động đi RA (ngược chiều mong muốn) -> Reset tích lũy về 0 ngay lập
-        // tức.
+        // "Smart Kill Switch": Chỉ reset nếu lực ngược (Outgoing) LỚN HƠN lực đẩy vào (MaxIncoming)
+        // Điều này giúp tránh việc reset khi hộp bị nảy nhẹ hoặc tay rụt lại nhưng vẫn đang đẩy
+        // vào.
         if (outgoingVelocityX > Config.OUTGOING_VELOCITY_THRESHOLD) {
-            if (accumulatedIncomingDistance > 0) {
+            // [MỚI] So sánh tỷ lệ: Nếu Outgoing > MaxIncoming thì mới coi là hành động rút ra/nhiễu
+            // mạnh
+            if (accumulatedIncomingDistance > 0 && outgoingVelocityX > maxIncomingVelocityX) {
                 Log.w(
                         "BoxProcessor",
-                        "!!! KILL SWITCH: Outgoing detected ($outgoingVelocityX). Resetting distance."
+                        "!!! KILL SWITCH: Outgoing ($outgoingVelocityX) > MaxIn ($maxIncomingVelocityX). Resetting."
                 )
                 accumulatedIncomingDistance = 0.0
+                maxIncomingVelocityX = 0.0
             }
         }
 
@@ -228,15 +234,24 @@ class BoxProcessor {
         // --- 3. LOGIC TÍCH LŨY ---
         if (isIncomingDominant && incomingVelocityX > currentVelocityThreshold) {
             accumulatedIncomingDistance += incomingVelocityX
+            // [MỚI] Cập nhật max velocity
+            if (incomingVelocityX > maxIncomingVelocityX) {
+                maxIncomingVelocityX = incomingVelocityX
+            }
+
             // Log khi đang tích lũy tốt
             Log.v(
                     "MOTION_DEBUG",
-                    "+++ ACCUMULATING ($currentState): Dist=${"%.1f".format(accumulatedIncomingDistance)} | Vel=${"%.1f".format(incomingVelocityX)} | Out=$outgoingVelocityX"
+                    "+++ ACCUMULATING ($currentState): Dist=${"%.1f".format(accumulatedIncomingDistance)} | Vel=${"%.1f".format(incomingVelocityX)} | Max=${"%.1f".format(maxIncomingVelocityX)} | Out=$outgoingVelocityX"
             )
         } else {
             // Trừ dần (Decay) khi không đủ điều kiện
             accumulatedIncomingDistance =
                     max(0.0, accumulatedIncomingDistance - Config.DISTANCE_DECAY_VALUE)
+
+            if (accumulatedIncomingDistance == 0.0) {
+                maxIncomingVelocityX = 0.0
+            }
 
             if (accumulatedIncomingDistance > 0) {
                 Log.v(
@@ -263,6 +278,7 @@ class BoxProcessor {
                     resetDataForNewScan()
                     currentState = AppState.SLIDING
                     accumulatedIncomingDistance = 0.0
+                    maxIncomingVelocityX = 0.0
                 }
             }
 
@@ -353,11 +369,13 @@ class BoxProcessor {
         currentState = AppState.SUCCESS
         feedbackMessage = "OK"
         accumulatedIncomingDistance = 0.0
+        maxIncomingVelocityX = 0.0
     }
 
     fun markError(msg: String) {
         currentState = AppState.ERROR
         feedbackMessage = msg
         accumulatedIncomingDistance = 0.0
+        maxIncomingVelocityX = 0.0
     }
 }

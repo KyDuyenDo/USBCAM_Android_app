@@ -27,13 +27,13 @@ object Config {
     const val VELOCITY_X_THRESHOLD_SLIDING = 1.5f
 
     // 2. [MỚI] Ngưỡng Reset (SUCCESS/ERROR -> SLIDING): Cần lực đẩy mạnh hơn để tránh rung lắc
-    const val VELOCITY_X_THRESHOLD_RESET = 4.0f
+    const val VELOCITY_X_THRESHOLD_RESET = 2.5f
 
     // 3. Tốc độ để xác định vật đã dừng hẳn
     const val VELOCITY_X_THRESHOLD_SETTLED = 0.8f
 
     // 4. [MỚI] Ngưỡng vận tốc đi ngược (Outgoing) để kích hoạt Kill Switch
-    const val OUTGOING_VELOCITY_THRESHOLD = 1.0f
+    const val OUTGOING_VELOCITY_THRESHOLD = 2.0f
 
     // --- NGƯỠNG KHOẢNG CÁCH TÍCH LŨY ---
     // Từ IDLE -> SLIDING
