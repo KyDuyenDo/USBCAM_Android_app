@@ -2,42 +2,25 @@ package com.example.usbcam
 
 object Config {
 
-    // ================= OPTICAL FLOW =================
-    const val MAX_TRACKING_POINTS = 100
-    const val QUALITY_LEVEL = 0.01
-    const val MIN_DISTANCE = 10.0
-    const val FLOW_WIN_SIZE = 31
+    // ================= PRESENCE (EDGE-BASED) =================
+    // Ngưỡng năng lượng cạnh dọc trung bình (YUV rất sạch)
+    const val EDGE_ENERGY_THRESHOLD = 15.0
 
-    // ================= MOTION FILTER =================
-    const val MAX_Y_TO_X_RATIO = 0.8f
-    const val MAX_VERTICAL_SHAKE_PIXEL = 8.0f
+    // Độ rộng tối thiểu của vùng presence (ratio theo width)
+    // Barcode + label ~ 20–40% frame
+    const val PRESENCE_WIDTH_RATIO = 0.18
 
-    // ================= ZONE =================
-    const val ZONE_SIDE_RATIO = 0.2f
+    // ================= TEMPORAL STABILITY =================
+    // Số frame liên tiếp để xác nhận presence
+    const val PRESENCE_CONFIRM_FRAMES = 2
 
-    // ================= INCOMING =================
-    const val MIN_INCOMING_FRAMES = 3
-    const val MIN_DISTANCE_TO_START_SLIDING = 15.0
-
-    // ================= EXIT (SUCCESS LOCK) =================
-    // ratio theo width
-    const val EXIT_DISTANCE_RATIO = 0.35
-
-    // ================= SETTLE =================
-    const val FRAMES_TO_SETTLE = 6
+    // Số frame liên tiếp mất presence để coi là EXIT
+    const val PRESENCE_LOST_FRAMES = 6
 
     // ================= SCAN =================
     const val SCAN_TIMEOUT_MS = 3000L
     const val SCAN_THROTTLE_MS = 500L
+
+    // ================= FPS =================
     const val MAX_PROCESSING_FPS = 15
-
-    // ================= ERROR SHAKE → RETRY =================
-    const val ERROR_SHAKE_MIN = 0.8
-    const val ERROR_SHAKE_MAX = 3.0
-    const val ERROR_SHAKE_FRAMES = 4
-    const val ERROR_SHAKE_ACCUM = 6.0
-
-    // ================= UI =================
-    const val BRIGHTNESS_BOOST = 40f
-    const val BEEP_VOLUME = 80
 }
