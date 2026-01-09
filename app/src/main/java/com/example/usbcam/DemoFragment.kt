@@ -8,7 +8,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.usbcam.api.PoApiService
@@ -27,7 +26,6 @@ import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.IAspectRatio
 import java.util.concurrent.ArrayBlockingQueue
-import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.CvType
@@ -59,7 +57,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     // Scan flags
     @Volatile private var isScanningBarcode = false
     @Volatile private var isScanningPO = false
-    
+
     // Timing
     private var lastProcessTime = 0L
     private var lastScanTime = 0L
@@ -88,7 +86,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         val adapter = TimeSlotAdapter()
         mViewBinding?.recyclerTimeSlot?.apply {
             layoutManager = LinearLayoutManager(context)
@@ -107,17 +105,22 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         viewModel.loadTarget()
         viewModel.loadAllTimeSlots()
 
-        com.example.usbcam.utils.NetworkConnectionMonitor(requireContext())
-            .observe(viewLifecycleOwner) { isConnected ->
-                mViewBinding?.tvNoInternet?.visibility = if (isConnected) View.GONE else View.VISIBLE
-            }
+        com.example.usbcam.utils.NetworkConnectionMonitor(requireContext()).observe(
+                        viewLifecycleOwner
+                ) { isConnected ->
+            mViewBinding?.tvNoInternet?.visibility = if (isConnected) View.GONE else View.VISIBLE
+        }
     }
 
     override fun getCameraView(): IAspectRatio? = mViewBinding?.tvCameraRender
     override fun getCameraViewContainer(): ViewGroup? = null
     override fun getGravity(): Int = Gravity.TOP
 
-    override fun onCameraState(self: com.jiangdg.ausbc.MultiCameraClient.ICamera, code: ICameraStateCallBack.State, msg: String?) {
+    override fun onCameraState(
+            self: com.jiangdg.ausbc.MultiCameraClient.ICamera,
+            code: ICameraStateCallBack.State,
+            msg: String?
+    ) {
         when (code) {
             ICameraStateCallBack.State.OPENED -> {
                 addPreviewDataCallBack(this)
@@ -133,16 +136,21 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
     override fun getCameraRequest(): CameraRequest {
         return CameraRequest.Builder()
-            .setPreviewWidth(640)
-            .setPreviewHeight(480)
-            .setRenderMode(CameraRequest.RenderMode.OPENGL)
-            .setDefaultRotateType(RotateType.ANGLE_0)
-            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG)
-            .setRawPreviewData(true)
-            .create()
+                .setPreviewWidth(640)
+                .setPreviewHeight(480)
+                .setRenderMode(CameraRequest.RenderMode.OPENGL)
+                .setDefaultRotateType(RotateType.ANGLE_0)
+                .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_NV21)
+                .setRawPreviewData(true)
+                .create()
     }
 
-    override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
+    override fun onPreviewData(
+            data: ByteArray?,
+            width: Int,
+            height: Int,
+            format: IPreviewDataCallBack.DataFormat
+    ) {
         if (data == null) return
         if (frameWidth != width || frameHeight != height) {
             frameWidth = width
@@ -156,19 +164,21 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private fun startProcessingThread() {
         stopProcessingThread()
         isProcessingThreadRunning = true
-        processingThread = Thread {
-            while (isProcessingThreadRunning) {
-                try {
-                    val data = frameQueue.take()
-                    processFrame(data)
-                } catch (e: InterruptedException) {
-                    break
+        processingThread =
+                Thread {
+                    while (isProcessingThreadRunning) {
+                        try {
+                            val data = frameQueue.take()
+                            processFrame(data)
+                        } catch (e: InterruptedException) {
+                            break
+                        }
+                    }
                 }
-            }
-        }.apply {
-            name = "FrameProcessing"
-            start()
-        }
+                        .apply {
+                            name = "FrameProcessing"
+                            start()
+                        }
     }
 
     private fun stopProcessingThread() {
@@ -185,23 +195,27 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         if (now - lastProcessTime < (1000L / Config.MAX_PROCESSING_FPS)) return
         lastProcessTime = now
 
-        var decoded = Mat()
         try {
-            val buf = MatOfByte(*data)
-            decoded = Imgcodecs.imdecode(buf, Imgcodecs.IMREAD_COLOR)
-            buf.release()
-
-            if (!decoded.empty()) {
-                Imgproc.cvtColor(decoded, mRgba, Imgproc.COLOR_BGR2RGBA)
-            } else {
-                mYuvMat?.put(0, 0, data)
-                Imgproc.cvtColor(mYuvMat, mRgba, Imgproc.COLOR_YUV2RGBA_NV21)
-            }
+            // Direct Raw YUV Processing (Zero/Low Copy)
+            // NV21 is YUV420sp (Standard Android Format)
+            // Y Plane: width * height
+            // UV Plane: width * height / 2
+            // Total: width * height * 1.5
+            
+            if (mYuvMat == null || mRgba == null) return
+            
+            // Put raw data into Mat (No decoding needed)
+            mYuvMat!!.put(0, 0, data)
+            
+            // Convert YUV -> RGBA for display & processing
+            // Note: COLOR_YUV2RGBA_NV21 is the correct code for standard Android NV21
+            Imgproc.cvtColor(mYuvMat, mRgba, Imgproc.COLOR_YUV2RGBA_NV21)
+            
         } catch (e: Exception) {
-            decoded.release()
+            Log.e(TAG, "Frame process error", e)
             return
         }
-        decoded.release()
+
         if (mRgba == null || mRgba!!.empty()) return
 
         val gray = Mat()
@@ -213,7 +227,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         // 2. Nếu trạng thái là SCANNING, kích hoạt ML Kit
         if (boxProcessor.currentState == AppState.SCANNING) {
             // Throttle: Không gọi liên tục, nhưng cũng không nên chậm quá
-            if (!isScanningBarcode && !isScanningPO && (now - lastScanTime > Config.SCAN_THROTTLE_MS)) {
+            if (!isScanningBarcode &&
+                            !isScanningPO &&
+                            (now - lastScanTime > Config.SCAN_THROTTLE_MS)
+            ) {
                 lastScanTime = now
                 val bmp = convertMatToBitmap(mRgba!!)
                 if (bmp != null) {
@@ -229,21 +246,20 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
     private fun scanBarcode(bitmap: Bitmap) {
         val image = InputImage.fromBitmap(bitmap, 0)
-        BarcodeScanning.getClient().process(image)
-            .addOnSuccessListener { barcodes ->
-                val barcode = barcodes.firstOrNull()?.rawValue
-                if (!barcode.isNullOrEmpty()) {
-                    Log.d(TAG, "Barcode Found: $barcode")
-                    // Có Barcode -> Scan tiếp PO (Text)
-                    isScanningPO = true
-                    scanPOInCenter(bitmap, barcode)
-                } else {
-                    isScanningBarcode = false
+        BarcodeScanning.getClient()
+                .process(image)
+                .addOnSuccessListener { barcodes ->
+                    val barcode = barcodes.firstOrNull()?.rawValue
+                    if (!barcode.isNullOrEmpty()) {
+                        Log.d(TAG, "Barcode Found: $barcode")
+                        // Có Barcode -> Scan tiếp PO (Text)
+                        isScanningPO = true
+                        scanPOInCenter(bitmap, barcode)
+                    } else {
+                        isScanningBarcode = false
+                    }
                 }
-            }
-            .addOnFailureListener {
-                isScanningBarcode = false
-            }
+                .addOnFailureListener { isScanningBarcode = false }
     }
 
     private fun scanPOInCenter(fullBitmap: Bitmap, barcode: String) {
@@ -257,7 +273,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
         try {
             var poBitmap = Bitmap.createBitmap(fullBitmap, roiX, roiY, roiW, roiH)
-            
+
             // --- CẢI TIẾN: TĂNG ĐỘ SÁNG (BRIGHTNESS BOOST) ---
             // Ánh sáng nhà máy yếu -> Tăng sáng bằng ColorMatrix
             if (Config.BRIGHTNESS_BOOST > 0) {
@@ -267,16 +283,38 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 val colorMatrix = ColorMatrix()
                 val boost = Config.BRIGHTNESS_BOOST
                 // Ma trận: [R,0,0,0,boost, 0,G,0,0,boost, ...]
-                colorMatrix.set(floatArrayOf(
-                    1f, 0f, 0f, 0f, boost, 
-                    0f, 1f, 0f, 0f, boost,
-                    0f, 0f, 1f, 0f, boost,
-                    0f, 0f, 0f, 1f, 0f
-                ))
-                paint.colorFilter = PorterDuffColorFilter(Color.TRANSPARENT, PorterDuff.Mode.SRC_ATOP) // Reset logic
+                colorMatrix.set(
+                        floatArrayOf(
+                                1f,
+                                0f,
+                                0f,
+                                0f,
+                                boost,
+                                0f,
+                                1f,
+                                0f,
+                                0f,
+                                boost,
+                                0f,
+                                0f,
+                                1f,
+                                0f,
+                                boost,
+                                0f,
+                                0f,
+                                0f,
+                                1f,
+                                0f
+                        )
+                )
+                paint.colorFilter =
+                        PorterDuffColorFilter(
+                                Color.TRANSPARENT,
+                                PorterDuff.Mode.SRC_ATOP
+                        ) // Reset logic
                 paint.colorFilter = ColorMatrixColorFilter(colorMatrix)
                 canvas.drawBitmap(poBitmap, 0f, 0f, paint)
-                
+
                 // Dùng ảnh đã tăng sáng
                 poBitmap = brightBitmap
             }
@@ -286,14 +324,14 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             val options = TextRecognizerOptions.Builder().build()
 
             TextRecognition.getClient(options)
-                .process(image)
-                .addOnSuccessListener { visionText ->
-                    processOcrResult(visionText.text, barcode)
-                }
-                .addOnCompleteListener {
-                    isScanningPO = false
-                    isScanningBarcode = false
-                }
+                    .process(image)
+                    .addOnSuccessListener { visionText ->
+                        processOcrResult(visionText.text, barcode)
+                    }
+                    .addOnCompleteListener {
+                        isScanningPO = false
+                        isScanningBarcode = false
+                    }
         } catch (e: Exception) {
             isScanningPO = false
             isScanningBarcode = false
@@ -304,13 +342,18 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         val lines = text.split("\n", " ")
         for (line in lines) {
             val clean = line.trim()
-            if (clean.length in Config.MIN_PO_LENGTH..Config.MAX_PO_LENGTH && clean.all { it.isDigit() }) {
-                boxProcessor.onScanSuccess(barcode, clean)
+            if (clean.length in Config.MIN_PO_LENGTH..Config.MAX_PO_LENGTH &&
+                            clean.all { it.isDigit() }
+            ) {
+                // boxProcessor.onScanSuccess(barcode, clean) -> OLD
+                boxProcessor.addPoCandidate(clean, barcode) // -> NEW VOTING
                 return
             }
         }
         // Fallback: Có barcode nhưng ko thấy PO
-        boxProcessor.onScanSuccess(barcode, null)
+        // boxProcessor.onScanSuccess(barcode, null) <-- Don't trigger validation on failure, just
+        // keep scanning
+        // We only want to Validate if we have a CONFIRMED PO.
     }
 
     private fun updateUI() {
@@ -325,28 +368,33 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
             mViewBinding?.let { binding ->
                 // Chỉ hiển thị loading motion khi thực sự đang xử lý
-                val isBusy = state == AppState.SLIDING || state == AppState.SCANNING || state == AppState.VALIDATING
+                val isBusy =
+                        state == AppState.SLIDING ||
+                                state == AppState.SCANNING ||
+                                state == AppState.VALIDATING
                 binding.pbMotion.visibility = if (isBusy) View.VISIBLE else View.GONE
-                
+
                 // Status Text
-                binding.tvStatusOk.text = when (state) {
-                    AppState.IDLE -> "READY"
-                    AppState.SLIDING -> "INCOMING..." // Đang trượt vào
-                    AppState.SCANNING -> "CAPTURING..."
-                    AppState.VALIDATING -> "VALIDATING..."
-                    AppState.SUCCESS -> "SUCCESS"
-                    AppState.ERROR -> "ERROR"
-                    else -> ""
-                }
+                binding.tvStatusOk.text =
+                        when (state) {
+                            AppState.IDLE -> "READY"
+                            AppState.SLIDING -> "INCOMING..." // Đang trượt vào
+                            AppState.SCANNING -> "CAPTURING..."
+                            AppState.VALIDATING -> "VALIDATING..."
+                            AppState.SUCCESS -> "SUCCESS"
+                            AppState.ERROR -> "ERROR"
+                            else -> ""
+                        }
 
                 // Màu sắc status
-                val color = when (state) {
-                    AppState.SLIDING -> Color.parseColor("#FF9800") // Cam
-                    AppState.SCANNING, AppState.VALIDATING -> Color.BLUE
-                    AppState.SUCCESS -> Color.GREEN
-                    AppState.ERROR -> Color.RED
-                    else -> Color.DKGRAY
-                }
+                val color =
+                        when (state) {
+                            AppState.SLIDING -> Color.parseColor("#FF9800") // Cam
+                            AppState.SCANNING, AppState.VALIDATING -> Color.BLUE
+                            AppState.SUCCESS -> Color.GREEN
+                            AppState.ERROR -> Color.RED
+                            else -> Color.DKGRAY
+                        }
                 binding.tvStatusOk.setTextColor(color)
 
                 // Fill data
@@ -368,9 +416,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 binding.tvTotalTarget.text = "${boxProcessor.target}"
 
                 if (resp?.articleImage != null) {
-                     Glide.with(this)
-                        .load("http://192.168.30.19:5000/shoes-photos/${resp.articleImage}")
-                        .into(binding.ivShoeImage)
+                    Glide.with(this)
+                            .load("http://192.168.30.19:5000/shoes-photos/${resp.articleImage}")
+                            .into(binding.ivShoeImage)
                 }
 
                 // Gọi API 1 lần duy nhất khi vào trạng thái VALIDATING
@@ -386,28 +434,46 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         val barcode = boxProcessor.currentBarcode ?: return
         isApiCalling = true
 
-        apiService.getPoDetails(po, barcode).enqueue(object : retrofit2.Callback<com.example.usbcam.api.PoResponse> {
-            override fun onResponse(call: retrofit2.Call<com.example.usbcam.api.PoResponse>, response: retrofit2.Response<com.example.usbcam.api.PoResponse>) {
-                isApiCalling = false
-                if (response.isSuccessful && response.body() != null) {
-                    boxProcessor.apiResponse = response.body()
-                    boxProcessor.markSuccess()
-                    viewModel.saveScanData(po, barcode, response.body()!!)
-                } else {
-                    boxProcessor.markError("API ERROR: ${response.code()}")
-                }
-            }
-            override fun onFailure(call: retrofit2.Call<com.example.usbcam.api.PoResponse>, t: Throwable) {
-                isApiCalling = false
-                // Offline fallback logic here if needed
-                boxProcessor.markError("NET ERROR")
-            }
-        })
+        apiService
+                .getPoDetails(po, barcode)
+                .enqueue(
+                        object : retrofit2.Callback<com.example.usbcam.api.PoResponse> {
+                            override fun onResponse(
+                                    call: retrofit2.Call<com.example.usbcam.api.PoResponse>,
+                                    response: retrofit2.Response<com.example.usbcam.api.PoResponse>
+                            ) {
+                                isApiCalling = false
+                                if (response.isSuccessful && response.body() != null) {
+                                    boxProcessor.apiResponse = response.body()
+                                    boxProcessor.markSuccess()
+                                    viewModel.saveScanData(po, barcode, response.body()!!)
+                                } else {
+                                    boxProcessor.markError("API ERROR: ${response.code()}")
+                                }
+                            }
+                            override fun onFailure(
+                                    call: retrofit2.Call<com.example.usbcam.api.PoResponse>,
+                                    t: Throwable
+                            ) {
+                                isApiCalling = false
+                                // Offline fallback logic here if needed
+                                boxProcessor.markError("NET ERROR")
+                            }
+                        }
+                )
     }
 
     private fun handleStateFeedback(newState: AppState) {
-        if (toneGen == null) toneGen = android.media.ToneGenerator(android.media.AudioManager.STREAM_ALARM, Config.BEEP_VOLUME)
-        if (vibrator == null) vibrator = activity?.getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator?
+        if (toneGen == null)
+                toneGen =
+                        android.media.ToneGenerator(
+                                android.media.AudioManager.STREAM_ALARM,
+                                Config.BEEP_VOLUME
+                        )
+        if (vibrator == null)
+                vibrator =
+                        activity?.getSystemService(android.content.Context.VIBRATOR_SERVICE) as
+                                android.os.Vibrator?
 
         when (newState) {
             AppState.SUCCESS -> {
@@ -416,7 +482,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             AppState.ERROR -> {
                 toneGen?.startTone(android.media.ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 500)
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    vibrator?.vibrate(android.os.VibrationEffect.createOneShot(500L, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                    vibrator?.vibrate(
+                            android.os.VibrationEffect.createOneShot(
+                                    500L,
+                                    android.os.VibrationEffect.DEFAULT_AMPLITUDE
+                            )
+                    )
                 }
             }
             else -> {}
@@ -428,7 +499,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             val bmp = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888)
             Utils.matToBitmap(mat, bmp)
             bmp
-        } catch (e: Exception) { null }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     override fun onDestroy() {
@@ -436,7 +509,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         stopProcessingThread()
         toneGen?.release()
     }
-    
+
     override fun onDestroyView() {
         super.onDestroyView()
         mViewBinding = null

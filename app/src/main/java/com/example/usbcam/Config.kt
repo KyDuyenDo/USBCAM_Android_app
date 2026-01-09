@@ -30,4 +30,8 @@ object Config {
     const val MIN_PO_LENGTH = 5
     const val MAX_PO_LENGTH = 20
     const val BEEP_VOLUME = 50
+    
+    // --- VOTING MECHANISM ---
+    const val VOTING_SAMPLES = 3 // Number of samples to collect
+    const val VOTING_CONFIDENCE_THRESHOLD = 0.5 // 50% agreement required
 }

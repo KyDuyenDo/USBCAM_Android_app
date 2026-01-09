@@ -213,6 +213,7 @@ class BoxProcessor {
         currentPO = null
         apiResponse = null
         feedbackMessage = "READY"
+        poCandidates.clear() // Reset votes
         // Quan trọng: Đặt lại trạng thái UI về IDLE hoặc SLIDING
         // để người dùng biết hệ thống đã reset
         if (currentState == AppState.SUCCESS || currentState == AppState.ERROR) {
@@ -220,11 +221,43 @@ class BoxProcessor {
         }
     }
 
+    // --- PO VOTING ---
+    private val poCandidates = mutableListOf<String>()
+
+    fun addPoCandidate(po: String, barcode: String) {
+        if (currentState != AppState.SCANNING) return
+
+        poCandidates.add(po)
+        Log.d("BoxProcessor", "Voting: Added $po (${poCandidates.size}/${Config.VOTING_SAMPLES})")
+
+        if (poCandidates.size >= Config.VOTING_SAMPLES) {
+            // Calculate Mode
+            val frequencyMap = poCandidates.groupingBy { it }.eachCount()
+            val bestCandidate = frequencyMap.maxByOrNull { it.value }
+
+            if (bestCandidate != null) {
+                val count = bestCandidate.value
+                val confidence = count.toDouble() / poCandidates.size
+
+                if (confidence > Config.VOTING_CONFIDENCE_THRESHOLD) {
+                    Log.i(
+                            "BoxProcessor",
+                            "Voting SUCCESS: ${bestCandidate.key} (Conf: $confidence)"
+                    )
+                    onScanSuccess(barcode, bestCandidate.key)
+                } else {
+                    Log.w("BoxProcessor", "Voting FAILED: Too chaotic. Retrying...")
+                    poCandidates.clear() // Reset and try again
+                }
+            }
+        }
+    }
+
     fun onScanSuccess(barcode: String, po: String?) {
         if (currentState != AppState.SCANNING) return
         currentBarcode = barcode
-        currentPO = po // Chấp nhận PO null ở đây, check sau
-        if (currentBarcode != null) {
+        currentPO = po
+        if (currentBarcode != null && currentPO != null) { // Expecting verified PO now
             currentState = AppState.VALIDATING
         }
     }
