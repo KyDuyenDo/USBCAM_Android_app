@@ -67,6 +67,14 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private val apiService = PoApiService.create()
     private var isApiCalling = false
 
+    // Local Data (moved from BoxProcessor)
+    private var targetQuantity = 0
+    private var totalProcessedCount = 0
+    private var currentApiResponse: com.example.usbcam.api.PoResponse? = null
+
+    // OCR Exchange
+    @Volatile private var pendingOcrResult: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (OpenCVLoader.initLocal()) {
@@ -93,10 +101,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
         viewModel.timeSlotList.observe(viewLifecycleOwner) { list -> adapter.submitList(list) }
         viewModel.targetData.observe(viewLifecycleOwner) { target ->
-            if (target != null) boxProcessor.target = target.quantityTarget
+            if (target != null) targetQuantity = target.quantityTarget
         }
         viewModel.totalScan.observe(viewLifecycleOwner) { total ->
-            if (total != null) boxProcessor.totalCount = total
+            if (total != null) totalProcessedCount = total
         }
 
         viewModel.loadTotal()
@@ -203,7 +211,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         Imgproc.cvtColor(mRgba, gray, Imgproc.COLOR_RGBA2GRAY)
 
         // 1. Cập nhật logic chuyển động (Optical Flow)
-        boxProcessor.updateLogic(gray)
+        boxProcessor.updateLogic(gray, pendingOcrResult)
+        pendingOcrResult = null // Reset after consume
 
         // 2. Nếu trạng thái là SCANNING, kích hoạt ML Kit
         if (boxProcessor.currentState == AppState.SCANNING) {
@@ -326,17 +335,22 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             if (clean.length in Config.MIN_PO_LENGTH..Config.MAX_PO_LENGTH &&
                             clean.all { it.isDigit() }
             ) {
-                boxProcessor.onScanSuccess(barcode, clean)
+                pendingOcrResult = clean
                 return
             }
         }
         // Fallback: Có barcode nhưng ko thấy PO
-        boxProcessor.onScanSuccess(barcode, null)
+        // pendingOcrResult = null (Implicit)
     }
 
     private fun updateUI() {
         activity?.runOnUiThread {
             val state = boxProcessor.currentState
+
+            // Reset logic if IDLE (box removed)
+            if (state == AppState.IDLE) {
+                if (currentApiResponse != null) currentApiResponse = null
+            }
 
             // Âm thanh / Rung khi thay đổi trạng thái
             if (state != lastState) {
@@ -346,29 +360,25 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
             mViewBinding?.let { binding ->
                 // Chỉ hiển thị loading motion khi thực sự đang xử lý
-                val isBusy =
-                        state == AppState.SLIDING ||
-                                state == AppState.SCANNING ||
-                                state == AppState.VALIDATING
+                val isBusy = state == AppState.MOVING || state == AppState.SCANNING
                 binding.pbMotion.visibility = if (isBusy) View.VISIBLE else View.GONE
 
                 // Status Text
                 binding.tvStatusOk.text =
                         when (state) {
                             AppState.IDLE -> "READY"
-                            AppState.SLIDING -> "INCOMING..." // Đang trượt vào
+                            AppState.MOVING -> "INCOMING..." // Đang trượt vào
+                            AppState.STABLE -> "STABLE"
                             AppState.SCANNING -> "CAPTURING..."
-                            AppState.VALIDATING -> "VALIDATING..."
                             AppState.SUCCESS -> "SUCCESS"
                             AppState.ERROR -> "ERROR"
-                            else -> ""
                         }
 
                 // Màu sắc status
                 val color =
                         when (state) {
-                            AppState.SLIDING -> Color.parseColor("#FF9800") // Cam
-                            AppState.SCANNING, AppState.VALIDATING -> Color.BLUE
+                            AppState.MOVING -> Color.parseColor("#FF9800") // Cam
+                            AppState.SCANNING -> Color.BLUE
                             AppState.SUCCESS -> Color.GREEN
                             AppState.ERROR -> Color.RED
                             else -> Color.DKGRAY
@@ -376,12 +386,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 binding.tvStatusOk.setTextColor(color)
 
                 // Fill data
-                binding.tvUpcValue.text = boxProcessor.currentBarcode ?: "--"
-                binding.tvPoValue.text = boxProcessor.currentPO ?: "--"
-                binding.tvTotalActual.text = "${boxProcessor.totalCount}"
+                binding.tvUpcValue.text = boxProcessor.barcode ?: "--"
+                binding.tvPoValue.text = boxProcessor.po ?: "--"
+                binding.tvTotalActual.text = "$totalProcessedCount"
 
-                // API Data binding (Giữ nguyên logic cũ)
-                val resp = boxProcessor.apiResponse
+                // API Data binding
+                val resp = currentApiResponse
                 binding.tvQtyValue.text = "${resp?.quantity}"
                 binding.tvRyValue.text = "${resp?.ry}"
                 binding.tvSizeValue.text = "${resp?.size}"
@@ -391,7 +401,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 binding.tvCountry.text = "${resp?.country}"
                 binding.tvLean.text = "${resp?.lean}"
                 binding.tvTotalOrder.text = "${resp?.qtyOrder}"
-                binding.tvTotalTarget.text = "${boxProcessor.target}"
+                binding.tvTotalTarget.text = "$targetQuantity"
 
                 if (resp?.articleImage != null) {
                     Glide.with(this)
@@ -399,8 +409,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                             .into(binding.ivShoeImage)
                 }
 
-                // Gọi API 1 lần duy nhất khi vào trạng thái VALIDATING
-                if (state == AppState.VALIDATING && !isApiCalling) {
+                // Gọi API khi SUCCESS và chưa có dữ liệu
+                if (state == AppState.SUCCESS && !isApiCalling && currentApiResponse == null) {
                     callApi()
                 }
             }
@@ -408,8 +418,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     }
 
     private fun callApi() {
-        val po = boxProcessor.currentPO ?: return
-        val barcode = boxProcessor.currentBarcode ?: return
+        val po = boxProcessor.po ?: return
+        val barcode = boxProcessor.barcode ?: return
         isApiCalling = true
 
         apiService
@@ -422,11 +432,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                             ) {
                                 isApiCalling = false
                                 if (response.isSuccessful && response.body() != null) {
-                                    boxProcessor.apiResponse = response.body()
-                                    boxProcessor.markSuccess()
+                                    currentApiResponse = response.body()
                                     viewModel.saveScanData(po, barcode, response.body()!!)
                                 } else {
-                                    boxProcessor.markError("API ERROR: ${response.code()}")
+                                    // Handle API Error UI if needed (e.g. Toast)
                                 }
                             }
                             override fun onFailure(
@@ -434,8 +443,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                     t: Throwable
                             ) {
                                 isApiCalling = false
-                                // Offline fallback logic here if needed
-                                boxProcessor.markError("NET ERROR")
+                                // Handle Net Error
                             }
                         }
                 )

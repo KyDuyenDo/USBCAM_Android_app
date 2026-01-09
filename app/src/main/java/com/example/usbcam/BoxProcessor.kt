@@ -1,153 +1,231 @@
 package com.example.usbcam
 
-import android.util.Log
 import kotlin.math.max
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
 
 class BoxProcessor {
 
-    // ================= PUBLIC STATE =================
+    // ================= PUBLIC =================
     @Volatile var currentState = AppState.IDLE
-    @Volatile var currentBarcode: String? = null
-    @Volatile var currentPO: String? = null
     @Volatile var feedbackMessage = "READY"
 
+    @Volatile var barcode: String? = null
+    @Volatile var po: String? = null
+
     // ================= INTERNAL =================
+    private var stateStartTime = 0L
+    private var errorTime = 0L
+
     private var presenceFrames = 0
     private var lostFrames = 0
-    private var stateStartTime = 0L
+    private var stationaryFrames = 0
 
-    // =================================================
-    // MAIN UPDATE (call every frame with GRAY/Y channel)
-    // =================================================
-    fun updateLogic(gray: Mat) {
-        val presence = detectPresence(gray)
+    // OCR
+    private val ocrFusion = OCRFusion()
+
+    // ================= OPENCV BUFFERS (REUSE) =================
+    private val gradX = Mat()
+    private val absGradX = Mat()
+    private val colSum = Mat()
+
+    private val diff = Mat()
+    private val binaryDiff = Mat()
+
+    private val laplacian = Mat()
+    private val mean = MatOfDouble()
+    private val std = MatOfDouble()
+
+    private var prevGray: Mat? = null
+    private var roiRect: Rect? = null
+
+    // =========================================================
+    // MAIN UPDATE (CALL PER FRAME – gray = Y channel)
+    // =========================================================
+    fun updateLogic(gray: Mat, ocrResult: String? = null) {
         val now = System.currentTimeMillis()
 
+        val presence = detectPresenceFast(gray)
+        val stationary = detectStationaryRobust(gray)
+
         when (currentState) {
+
             AppState.IDLE -> {
+                feedbackMessage = "READY"
                 if (presence) {
                     presenceFrames++
                     if (presenceFrames >= Config.PRESENCE_CONFIRM_FRAMES) {
-                        Log.i("BoxProcessor", ">>> PRESENCE CONFIRMED")
-                        currentState = AppState.SCANNING
-                        feedbackMessage = "SCANNING..."
-                        stateStartTime = now
-                        presenceFrames = 0
-                        lostFrames = 0
+                        currentState = AppState.MOVING
+                        resetCounters()
                     }
-                } else {
-                    presenceFrames = 0
-                }
+                } else presenceFrames = 0
             }
-            AppState.SCANNING -> {
-                if (!presence) {
-                    lostFrames++
-                    if (lostFrames >= Config.PRESENCE_LOST_FRAMES) {
-                        markError("OBJECT LOST")
-                    }
-                } else {
-                    lostFrames = 0
-                }
 
-                if (now - stateStartTime > Config.SCAN_TIMEOUT_MS) {
-                    markError("SCAN TIMEOUT")
+            AppState.MOVING -> {
+                feedbackMessage = "MOVING..."
+                if (!presence) resetToIdle()
+                else if (stationary) {
+                    stationaryFrames++
+                    if (stationaryFrames >= Config.STATIONARY_CONFIRM_FRAMES) {
+                        currentState = AppState.STABLE
+                        resetCounters()
+                    }
+                } else stationaryFrames = 0
+            }
+
+            AppState.STABLE -> {
+                feedbackMessage = "CHECKING FOCUS..."
+                if (!presence) resetToIdle()
+                else if (isImageSharp(gray.submat(getCenterROI(gray)))) {
+                    currentState = AppState.SCANNING
+                    ocrFusion.reset()
+                    stateStartTime = now
                 }
             }
+
+            AppState.SCANNING -> {
+                feedbackMessage = "SCANNING..."
+                if (!presence) markError()
+                else if (now - stateStartTime > Config.SCAN_TIMEOUT_MS) markError()
+                else {
+                    // ===== OCR MULTI-FRAME =====
+                    if (ocrResult != null) {
+                        ocrFusion.add(ocrResult)
+                        val fused = ocrFusion.getFused()
+                        if (fused != null) {
+                            po = fused
+                            currentState = AppState.SUCCESS
+                            feedbackMessage = "SUCCESS"
+                        }
+                    }
+                }
+            }
+
             AppState.SUCCESS -> {
-                // LOCKED: KHÔNG reset nếu còn presence
+                feedbackMessage = "SUCCESS"
                 if (!presence) {
                     lostFrames++
-                    if (lostFrames >= Config.PRESENCE_LOST_FRAMES) {
-                        resetToIdle()
-                    }
-                } else {
-                    lostFrames = 0
-                }
+                    if (lostFrames >= Config.PRESENCE_LOST_FRAMES) resetToIdle()
+                } else lostFrames = 0
             }
+
             AppState.ERROR -> {
-                // Cho phép chỉnh hộp để scan lại
-                if (presence) {
-                    currentState = AppState.SCANNING
-                    feedbackMessage = "SCANNING..."
-                    stateStartTime = now
-                    lostFrames = 0
-                }
+                feedbackMessage = "ERROR – ADJUST BOX"
+                if (!presence) resetToIdle()
+                else if (
+                    stationary &&
+                    now - errorTime > Config.ERROR_RETRY_COOLDOWN_MS
+                ) {
+                    stationaryFrames++
+                    if (stationaryFrames >= Config.STATIONARY_CONFIRM_FRAMES) {
+                        currentState = AppState.STABLE
+                        resetCounters()
+                    }
+                } else stationaryFrames = 0
             }
-            else -> {}
         }
+
+        // update prev frame
+        if (prevGray == null) prevGray = gray.clone()
+        else gray.copyTo(prevGray!!)
     }
 
-    // =================================================
-    // PRESENCE DETECTION (CORE LOGIC)
-    // =================================================
-    private fun detectPresence(gray: Mat): Boolean {
-
-        // Sobel X → edge dọc (barcode cực mạnh)
-        val gradX = Mat()
+    // =========================================================
+    // PRESENCE (FAST)
+    // =========================================================
+    private fun detectPresenceFast(gray: Mat): Boolean {
         Imgproc.Sobel(gray, gradX, CvType.CV_32F, 1, 0)
+        Core.absdiff(gradX, Scalar(0.0), absGradX)
+        Core.reduce(absGradX, colSum, 0, Core.REDUCE_AVG, CvType.CV_32F)
 
-        Core.absdiff(gradX, Scalar(0.0), gradX)
-
-        val width = gradX.cols()
-        val height = gradX.rows()
-
-        // Projection theo trục Y
-        val energy = DoubleArray(width)
-
-        for (x in 0 until width) {
-            var sum = 0.0
-            for (y in 0 until height) {
-                sum += gradX.get(y, x)[0]
-            }
-            energy[x] = sum / height
-        }
-
-        gradX.release()
-
-        // Tìm dải X liên tục có năng lượng cao
-        val minWidth = (width * Config.PRESENCE_WIDTH_RATIO).toInt()
+        val w = colSum.cols()
+        val minW = (w * Config.PRESENCE_WIDTH_RATIO).toInt()
 
         var run = 0
         var maxRun = 0
-
-        for (x in energy.indices) {
-            if (energy[x] > Config.EDGE_ENERGY_THRESHOLD) {
+        for (x in 0 until w) {
+            if (colSum.get(0, x)[0] > Config.EDGE_ENERGY_THRESHOLD) {
                 run++
                 maxRun = max(maxRun, run)
-            } else {
-                run = 0
-            }
+            } else run = 0
         }
-
-        return maxRun >= minWidth
+        return maxRun >= minW
     }
 
-    // =================================================
-    // CALLBACKS
-    // =================================================
-    fun onScanSuccess(barcode: String, po: String?) {
-        if (currentState != AppState.SCANNING) return
-        currentBarcode = barcode
-        currentPO = po
-        currentState = AppState.SUCCESS
-        feedbackMessage = "SUCCESS"
-        lostFrames = 0
+    // =========================================================
+    // STATIONARY – ANTI FLICKER
+    // =========================================================
+    private fun detectStationaryRobust(gray: Mat): Boolean {
+        val prev = prevGray ?: return false
+        val roi = getCenterROI(gray)
+
+        val curr = gray.submat(roi)
+        val prevR = prev.submat(roi)
+
+        Core.absdiff(curr, prevR, diff)
+        Imgproc.threshold(
+            diff,
+            binaryDiff,
+            Config.STATIONARY_DIFF_PIXEL_THRESHOLD,
+            255.0,
+            Imgproc.THRESH_BINARY
+        )
+
+        val changed = Core.countNonZero(binaryDiff)
+        val total = roi.width * roi.height
+
+        curr.release()
+        prevR.release()
+
+        return changed < total * Config.STATIONARY_CHANGED_RATIO
     }
 
-    fun markError(msg: String) {
+    // =========================================================
+    // BLUR CHECK (OCR GATE)
+    // =========================================================
+    private fun isImageSharp(roi: Mat): Boolean {
+        Imgproc.Laplacian(roi, laplacian, CvType.CV_64F)
+        Core.meanStdDev(laplacian, mean, std)
+        val variance = std.get(0, 0)[0].let { it * it }
+        roi.release()
+        return variance > Config.BLUR_THRESHOLD
+    }
+
+    // =========================================================
+    // ROI SAFE CACHE
+    // =========================================================
+    private fun getCenterROI(gray: Mat): Rect {
+        val w = gray.cols()
+        val h = gray.rows()
+        val rw = (w * Config.ROI_WIDTH_RATIO).toInt()
+        val rh = (h * Config.ROI_HEIGHT_RATIO).toInt()
+
+        if (roiRect == null || roiRect!!.width != rw || roiRect!!.height != rh) {
+            roiRect = Rect((w - rw) / 2, (h - rh) / 2, rw, rh)
+        }
+        return roiRect!!
+    }
+
+    // =========================================================
+    // HELPERS
+    // =========================================================
+    private fun markError() {
         currentState = AppState.ERROR
-        feedbackMessage = msg
-        lostFrames = 0
+        errorTime = System.currentTimeMillis()
+        resetCounters()
     }
 
     private fun resetToIdle() {
         currentState = AppState.IDLE
         feedbackMessage = "READY"
+        barcode = null
+        po = null
+        resetCounters()
+    }
+
+    private fun resetCounters() {
         presenceFrames = 0
         lostFrames = 0
-        currentBarcode = null
-        currentPO = null
+        stationaryFrames = 0
     }
 }
