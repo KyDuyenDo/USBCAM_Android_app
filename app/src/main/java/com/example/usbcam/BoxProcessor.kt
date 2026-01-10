@@ -30,13 +30,27 @@ class BoxProcessor {
     private val ocrFusion = OCRFusion()
 
     // ================= OPENCV BUFFERS =================
+    // Gradient buffers
     private val gradX = Mat()
+    private val gradY = Mat()
     private val absGradX = Mat()
+    private val absGradY = Mat()
+    private val fullGrad = Mat()
+
+    // Processing buffers
+    private val blurredMat = Mat()
     private val thresholdMat = Mat()
     private val morphMat = Mat()
     private val hierarchy = Mat()
 
-    // Kernel cập nhật theo Config (21, 3)
+    // Morphology kernels - Two-stage approach from paper
+    private val closeKernel =
+            Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Config.MORPH_CLOSE_KERNEL)
+    private val erodeKernel =
+            Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Config.MORPH_ERODE_KERNEL)
+
+    // Legacy kernel for VEPP (kept separate)
+    @Suppress("DEPRECATION")
     private val morphKernel =
             Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Config.MORPH_KERNEL_SIZE)
 
@@ -150,27 +164,59 @@ class BoxProcessor {
     }
 
     // =========================================================
-    // PRESENCE – BARCODE MORPHOLOGY & TEXTURE CHECK
+    // PRESENCE – ENHANCED BARCODE DETECTION (PAPER APPROACH)
     // =========================================================
     private fun detectPresenceRobust(gray: Mat): Boolean {
         try {
-            // 1. Sobel Gradient
-            Imgproc.Sobel(gray, gradX, CvType.CV_32F, 1, 0)
-            Core.convertScaleAbs(gradX, absGradX)
+            // STEP 1: Compute X and Y Gradients (Paper approach)
+            Imgproc.Sobel(gray, gradX, CvType.CV_16S, 1, 0)
+            Imgproc.Sobel(gray, gradY, CvType.CV_16S, 0, 1)
 
-            // 2. Threshold
+            // STEP 2: Scale and convert to absolute values
+            // Paper uses scale factor of 2.0 for both gradients
+            Core.convertScaleAbs(gradX, absGradX, Config.GRADIENT_SCALE, 0.0)
+            Core.convertScaleAbs(gradY, absGradY, Config.GRADIENT_SCALE, 0.0)
+
+            // STEP 3: Subtract Y from X to isolate vertical lines
+            // This suppresses horizontal features (text) while enhancing vertical barcode lines
+            Core.subtract(absGradX, absGradY, fullGrad)
+
+            // STEP 4: Blur to reduce noise and smooth gradient response
+            // Paper uses 9x9 kernel
+            Imgproc.blur(fullGrad, blurredMat, Config.BLUR_KERNEL_SIZE)
+
+            // STEP 5: Binary threshold
+            // Paper uses threshold value of 80
             Imgproc.threshold(
-                    absGradX,
+                    blurredMat,
                     thresholdMat,
-                    Config.GRADIENT_THRESHOLD,
+                    Config.BINARY_THRESHOLD,
                     255.0,
                     Imgproc.THRESH_BINARY
             )
 
-            // 3. Morphology Close
-            Imgproc.morphologyEx(thresholdMat, morphMat, Imgproc.MORPH_CLOSE, morphKernel)
+            // STEP 6: Two-stage morphology (Paper approach)
+            // Stage 1: Close with horizontal kernel to fill gaps between vertical lines
+            Imgproc.morphologyEx(
+                    thresholdMat,
+                    morphMat,
+                    Imgproc.MORPH_CLOSE,
+                    closeKernel,
+                    Point(-1.0, -1.0),
+                    Config.MORPH_CLOSE_ITERATIONS
+            )
 
-            // 4. Find Contours
+            // Stage 2: Erode with vertical kernel to remove horizontal noise
+            Imgproc.morphologyEx(
+                    morphMat,
+                    morphMat,
+                    Imgproc.MORPH_ERODE,
+                    erodeKernel,
+                    Point(-1.0, -1.0),
+                    Config.MORPH_ERODE_ITERATIONS
+            )
+
+            // STEP 7: Find Contours
             val contours = ArrayList<MatOfPoint>()
             Imgproc.findContours(
                     morphMat,
@@ -180,49 +226,63 @@ class BoxProcessor {
                     Imgproc.CHAIN_APPROX_SIMPLE
             )
 
-            val frameArea = gray.rows() * gray.cols()
-            val minArea = frameArea * Config.MIN_BARCODE_AREA_RATIO
+            if (contours.isEmpty()) {
+                Log.d(TAG, "[Presence] No contours found")
+                return false
+            }
 
-            var found = false
-            var candidateCount = 0
-            var validCount = 0
+            // STEP 8: Select largest contour (Paper approach)
+            // Find the contour with the largest area
+            var largestArea = 0.0
+            var largestContour: MatOfPoint? = null
 
             for (cnt in contours) {
-                val r = Imgproc.boundingRect(cnt)
-                val area = r.width * r.height
-                val ratio = r.width.toDouble() / r.height
-
-                // Python Logic: Ratio > 2.5 (nghiêm ngặt hơn để loại bỏ nhiễu vuông)
-                if (area > minArea && ratio > Config.MIN_ASPECT_RATIO) {
-                    candidateCount++
-
-                    // === TEXTURE VALIDATION ===
-                    // Cắt ROI từ ảnh Threshold (trước khi morph)
-                    val roiCheck = thresholdMat.submat(r)
-                    if (validateBarcodeTexture(roiCheck)) {
-                        validCount++
-                        found = true
-                        roiCheck.release()
-                        break // Tìm thấy 1 cái hợp lệ là đủ
-                    }
-                    roiCheck.release()
+                val area = Imgproc.contourArea(cnt)
+                if (area > largestArea) {
+                    largestArea = area
+                    largestContour = cnt
                 }
             }
 
-            // Debug logging
-            if (candidateCount == 0) {
+            val frameArea = gray.rows() * gray.cols()
+            val minArea = frameArea * Config.MIN_BARCODE_AREA_RATIO
+
+            // Check if largest contour meets minimum area requirement
+            if (largestContour == null || largestArea < minArea) {
+                Log.d(TAG, "[Presence] Largest contour too small: area=$largestArea, min=$minArea")
+                contours.forEach { it.release() }
+                return false
+            }
+
+            // Check aspect ratio
+            val r = Imgproc.boundingRect(largestContour)
+            val ratio = r.width.toDouble() / r.height
+
+            if (ratio < Config.MIN_ASPECT_RATIO) {
                 Log.d(
                         TAG,
-                        "[Presence] ${contours.size} contours, 0 candidates (all too small/narrow)"
+                        "[Presence] Largest contour aspect ratio too low: ratio=${"%.2f".format(ratio)}, min=${Config.MIN_ASPECT_RATIO}"
                 )
-            } else if (validCount == 0) {
-                Log.d(TAG, "[Presence] ✗ $candidateCount candidates, none valid (texture failed)")
+                contours.forEach { it.release() }
+                return false
+            }
+
+            // STEP 9: Texture validation on largest contour
+            val roiCheck = thresholdMat.submat(r)
+            val isValid = validateBarcodeTexture(roiCheck)
+            roiCheck.release()
+
+            if (isValid) {
+                Log.d(
+                        TAG,
+                        "[Presence] ✓ BARCODE DETECTED (area=${"%.0f".format(largestArea)}, ratio=${"%.2f".format(ratio)})"
+                )
             } else {
-                Log.d(TAG, "[Presence] ✓ BARCODE DETECTED")
+                Log.d(TAG, "[Presence] ✗ Largest contour failed texture validation")
             }
 
             contours.forEach { it.release() }
-            return found
+            return isValid
         } catch (e: Exception) {
             Log.e(TAG, "Presence error", e)
             return false
@@ -230,8 +290,13 @@ class BoxProcessor {
     }
 
     /**
-     * Python Port: _validate_barcode_texture Kiểm tra mật độ và sự phân bố của các cột cạnh dọc
-     * (Column clustering).
+     * ✅ OPTIMIZED: Expensive column clustering loop removed.
+     * 
+     * The gradient subtraction (X-Y), two-stage morphology, and aspect ratio
+     * filtering already provide robust noise rejection. Column clustering is
+     * redundant and wastes CPU cycles.
+     * 
+     * Only fast density check remains using native OpenCV Core.countNonZero.
      */
     private fun validateBarcodeTexture(binaryROI: Mat): Boolean {
         val cols = binaryROI.cols()
@@ -241,62 +306,20 @@ class BoxProcessor {
         if (totalPixels == 0) return false
         if (rows < 5 || cols < 10) return false
 
-        // 1. Basic Density Check (Python: 0.05 - 0.20)
+        // Fast Density Check (Native OpenCV - extremely fast)
+        // Barcodes have alternating black/white lines, so white pixel density
+        // is typically 5-45% depending on line thickness and barcode type.
+        // If density > 0.5, it's likely a white sticker, not a barcode.
         val nonZero = Core.countNonZero(binaryROI)
         val density = nonZero.toDouble() / totalPixels
-        if (density < Config.MIN_TEXTURE_DENSITY || density > Config.MAX_TEXTURE_DENSITY) {
-            return false
-        }
 
-        // 2. Column-based clustering analysis
-        // Chuyển dữ liệu sang mảng byte để xử lý nhanh (tránh gọi .get() trong vòng lặp)
-        val buffer = ByteArray(totalPixels)
-        binaryROI.get(0, 0, buffer)
+        val isValid = density in 0.05..0.45
 
-        // Tính tổng pixel trắng trên mỗi cột
-        val colSums = IntArray(cols)
-        var maxColSum = 0
-
-        for (x in 0 until cols) {
-            var sum = 0
-            for (y in 0 until rows) {
-                // index = y * width + x
-                if (buffer[y * cols + x] != 0.toByte()) {
-                    sum++
-                }
-            }
-            colSums[x] = sum
-            if (sum > maxColSum) maxColSum = sum
-        }
-
-        if (maxColSum == 0) return false
-
-        // Python logic: Active cols > 30% of max
-        val activeThreshold = maxColSum * 0.3
-
-        var currentRun = 0
-        var maxRun = 0
-
-        // Tìm chuỗi cột liên tiếp dài nhất (Longest run of active columns)
-        for (sum in colSums) {
-            if (sum > activeThreshold) {
-                currentRun++
-            } else {
-                if (currentRun > maxRun) maxRun = currentRun
-                currentRun = 0
-            }
-        }
-        // Check lần cuối
-        if (currentRun > maxRun) maxRun = currentRun
-
-        // Python Rule: Barcode thật phải có cụm vạch liền nhau >= 15 cột
-        val isValid = maxRun >= Config.MIN_TEXTURE_CLUSTER_WIDTH
-
-        // Debug logging for texture validation failures
+        // Debug logging
         if (!isValid) {
             Log.d(
                     TAG,
-                    "[Texture] Rejected: density=${"%.3f".format(density)}, max_run=$maxRun (need >=${Config.MIN_TEXTURE_CLUSTER_WIDTH})"
+                    "[Texture] Rejected: density=${"%.3f".format(density)} (valid range: 0.05-0.45)"
             )
         }
 
@@ -418,18 +441,31 @@ class BoxProcessor {
 
     fun release() {
         try {
+            // Gradient buffers
             gradX.release()
+            gradY.release()
             absGradX.release()
+            absGradY.release()
+            fullGrad.release()
+
+            // Processing buffers
+            blurredMat.release()
             thresholdMat.release()
             morphMat.release()
             hierarchy.release()
+
+            // Morphology kernels
+            closeKernel.release()
+            erodeKernel.release()
             morphKernel.release()
 
+            // VEPP buffers
             veppGradX.release()
             veppAbsGradX.release()
             veppProfile.release()
             prevVeppProfile?.release()
 
+            // Blur check buffers
             laplacian.release()
             mean.release()
             std.release()

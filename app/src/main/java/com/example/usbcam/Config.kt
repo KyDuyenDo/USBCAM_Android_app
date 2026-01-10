@@ -8,27 +8,51 @@ object Config {
     // PRESENCE DETECTION (MORPHOLOGY & TEXTURE)
     // =========================================================
 
+    // Gradient scaling factor (paper uses 2.0 for both X and Y)
+    const val GRADIENT_SCALE = 2.0
+
     // Ngưỡng cường độ cạnh (giống Python: 50.0)
     const val GRADIENT_THRESHOLD = 50.0
 
-    // Kích thước nhân (Kernel): Rộng 21, Cao 3
-    // Chiều cao nhỏ (3) giúp tránh dính chữ vào barcode
-    val MORPH_KERNEL_SIZE = Size(21.0, 3.0)
+    // Blur kernel size (paper uses 9x9 to reduce noise)
+    val BLUR_KERNEL_SIZE = Size(9.0, 9.0)
+
+    // Binary threshold (paper uses 80)
+    const val BINARY_THRESHOLD = 80.0
+
+    // Morphology kernels - Two-stage approach from paper
+    // Stage 1: Close with horizontal kernel to fill gaps between vertical lines
+    val MORPH_CLOSE_KERNEL = Size(21.0, 3.0)
+    const val MORPH_CLOSE_ITERATIONS = 2
+
+    // Stage 2: Erode with vertical kernel to remove horizontal noise
+    val MORPH_ERODE_KERNEL = Size(3.0, 21.0)
+    const val MORPH_ERODE_ITERATIONS = 1
+
+    // Legacy kernel (kept for VEPP, will be replaced)
+    @Deprecated("Use MORPH_CLOSE_KERNEL instead") val MORPH_KERNEL_SIZE = Size(21.0, 3.0)
 
     // Diện tích tối thiểu: 3% khung hình
     const val MIN_BARCODE_AREA_RATIO = 0.03
 
-    // Tỷ lệ khung hình (Width/Height): Tăng lên 2.5
-    // Barcode chuẩn thường rất dẹt. Loại bỏ các hình vuông/chữ nhật ngắn.
-    const val MIN_ASPECT_RATIO = 2.5
+    // Tỷ lệ khung hình (Width/Height): Reduced to 1.0 based on real-world testing
+    // Log analysis shows actual barcodes have ratios of 1.1-1.6
+    // This allows detection of compact barcodes and angled views
+    // while still filtering out perfectly square noise (ratio < 1.0)
+    const val MIN_ASPECT_RATIO = 1.0
 
-    // --- Texture Validation (Mới) ---
-    // Mật độ điểm trắng (cạnh) trong vùng ROI: 5% -> 20%
+    // --- Texture Validation ---
+    // Density range for barcode detection (5% - 45%)
+    // Note: Actual range (0.05-0.45) is hardcoded in validateBarcodeTexture
+    // for optimal performance after gradient subtraction optimization
     const val MIN_TEXTURE_DENSITY = 0.05
+    
+    // DEPRECATED: Column clustering removed for performance optimization
+    // Gradient subtraction (X-Y) + morphology already filters noise effectively
+    @Deprecated("Column clustering removed - redundant after gradient subtraction")
     const val MAX_TEXTURE_DENSITY = 0.20
-
-    // Số lượng cột (column) liên tiếp tối thiểu chứa vạch để được coi là barcode
-    // Giúp loại bỏ nhiễu dạng hạt hoặc vết xước rời rạc.
+    
+    @Deprecated("Column clustering removed - redundant after gradient subtraction")
     const val MIN_TEXTURE_CLUSTER_WIDTH = 15
 
     // Số frame xác nhận presence
