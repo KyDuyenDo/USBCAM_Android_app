@@ -54,6 +54,7 @@ object Config {
     const val MAX_PROCESSING_FPS = 20
     const val SCAN_THROTTLE_MS = 500L
     const val BRIGHTNESS_BOOST = 30f
+    const val PO_BRIGHTNESS_BOOST = 20f // Slight brightness boost for PO OCR
 
     // =========================================================
     // TRACKING MANAGER CONFIG
