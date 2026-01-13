@@ -8,6 +8,7 @@ class BoxProcessor {
 
     companion object {
         private const val TAG = "BoxProcessor"
+        private const val CLEANUP_INTERVAL = 500 // Cleanup mỗi 500 frames
     }
 
     // ================= PUBLIC =================
@@ -23,6 +24,9 @@ class BoxProcessor {
     private var stateStartTime = 0L
     private var lastScanTime = 0L
 
+    private var frameProcessCount = 0L
+    private var lastCleanupTime = 0L
+
     // Helpers
     private val barcodeDecoder = BarcodeDecoder()
     private val tracker = TrackingManager()
@@ -37,6 +41,18 @@ class BoxProcessor {
     // =========================================================
     fun updateLogic(gray: Mat, bitmap: Bitmap?) {
         val now = System.currentTimeMillis()
+        frameProcessCount++
+
+        // ✅ CRITICAL: Periodic cleanup mỗi 25 giây (~500 frames @ 20 FPS)
+        if (frameProcessCount % CLEANUP_INTERVAL == 0L) {
+            performPeriodicCleanup()
+            lastCleanupTime = now
+            Log.i(
+                    TAG,
+                    "🧹 Periodic cleanup #${frameProcessCount / CLEANUP_INTERVAL} " +
+                            "(frame $frameProcessCount, uptime ${(now - stateStartTime) / 1000}s)"
+            )
+        }
 
         // 1. Detect Presence (Using new component)
         val presence = presenceDetector.detect(gray)
@@ -193,6 +209,26 @@ class BoxProcessor {
             po = null
             poExtractor.reset()
             transitionTo(AppState.SCANNING)
+        }
+    }
+
+    /** ✅ Periodic cleanup để giải phóng native memory */
+    private fun performPeriodicCleanup() {
+        try {
+            // Force System.gc() để dọn Java heap
+            System.gc()
+
+            // Log memory info
+            val runtime = Runtime.getRuntime()
+            val usedMem = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024
+            val maxMem = runtime.maxMemory() / 1024 / 1024
+
+            Log.d(
+                    TAG,
+                    "Memory after cleanup: ${usedMem}MB / ${maxMem}MB (${usedMem * 100 / maxMem}%)"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during periodic cleanup", e)
         }
     }
 
