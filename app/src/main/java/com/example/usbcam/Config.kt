@@ -11,9 +11,6 @@ object Config {
     // Gradient scaling factor (paper uses 2.0 for both X and Y)
     const val GRADIENT_SCALE = 2.0
 
-    // Ngưỡng cường độ cạnh (giống Python: 50.0)
-    const val GRADIENT_THRESHOLD = 50.0
-
     // Blur kernel size (paper uses 9x9 to reduce noise)
     val BLUR_KERNEL_SIZE = Size(9.0, 9.0)
 
@@ -29,9 +26,6 @@ object Config {
     val MORPH_ERODE_KERNEL = Size(3.0, 21.0)
     const val MORPH_ERODE_ITERATIONS = 1
 
-    // Legacy kernel (kept for VEPP, will be replaced)
-    @Deprecated("Use MORPH_CLOSE_KERNEL instead") val MORPH_KERNEL_SIZE = Size(21.0, 3.0)
-
     // Diện tích tối thiểu: 3% khung hình
     const val MIN_BARCODE_AREA_RATIO = 0.03
 
@@ -40,35 +34,6 @@ object Config {
     // This allows detection of compact barcodes and angled views
     // while still filtering out perfectly square noise (ratio < 1.0)
     const val MIN_ASPECT_RATIO = 1.0
-
-    // --- Texture Validation ---
-    // Density range for barcode detection (5% - 45%)
-    // Note: Actual range (0.05-0.45) is hardcoded in validateBarcodeTexture
-    // for optimal performance after gradient subtraction optimization
-    const val MIN_TEXTURE_DENSITY = 0.05
-    
-    // DEPRECATED: Column clustering removed for performance optimization
-    // Gradient subtraction (X-Y) + morphology already filters noise effectively
-    @Deprecated("Column clustering removed - redundant after gradient subtraction")
-    const val MAX_TEXTURE_DENSITY = 0.20
-    
-    @Deprecated("Column clustering removed - redundant after gradient subtraction")
-    const val MIN_TEXTURE_CLUSTER_WIDTH = 15
-
-    // Số frame xác nhận presence
-    const val PRESENCE_CONFIRM_FRAMES = 2
-    const val PRESENCE_LOST_FRAMES = 2
-
-    // =========================================================
-    // STATIONARY DETECTION
-    // =========================================================
-
-    // Giảm xuống 3 frame để phản hồi nhanh hơn (giống Python)
-    const val STATIONARY_CONFIRM_FRAMES = 3
-
-    // Ngưỡng so sánh VEPP (L1 Norm).
-    // Tăng lên 2.5 để chấp nhận rung tay nhẹ (giá trị cũ 0.15 quá gắt)
-    const val BARCODE_STATIONARY_L1_THRESHOLD = 2.5f
 
     // =========================================================
     // BLUR / FOCUS & OTHERS
@@ -81,7 +46,6 @@ object Config {
     const val ROI_HEIGHT_RATIO = 0.5
 
     const val SCAN_TIMEOUT_MS = 3000L
-    const val ERROR_RETRY_COOLDOWN_MS = 1200L
 
     // Các tham số phụ khác (giữ nguyên)
     const val MIN_PO_LENGTH = 6
@@ -90,4 +54,24 @@ object Config {
     const val MAX_PROCESSING_FPS = 20
     const val SCAN_THROTTLE_MS = 500L
     const val BRIGHTNESS_BOOST = 30f
+
+    // =========================================================
+    // TRACKING MANAGER CONFIG
+    // =========================================================
+    const val TRACKING_TIME_WINDOW_MS: Long = 2000
+    const val SHORT_MISS_TOLERANCE_MS: Long = 500
+    const val LONG_MISS_THRESHOLD_MS: Long = 1500
+
+    const val MISS_THRESHOLD_SHORT: Int = 5
+    const val MISS_THRESHOLD_MEDIUM: Int = 8
+
+    const val STABLE_POSITION_THRESHOLD: Float = 10f
+    const val DRIFT_POSITION_THRESHOLD: Float = 30f
+
+    const val NEW_BOX_DISTANCE_THRESHOLD: Float = 100f
+    const val NEW_BOX_X_THRESHOLD: Float = 80f
+    const val NEW_BOX_Y_THRESHOLD: Float = 60f
+
+    const val MOTION_LOW_THRESHOLD: Float = 5f
+    const val MOTION_MEDIUM_THRESHOLD: Float = 20f
 }
