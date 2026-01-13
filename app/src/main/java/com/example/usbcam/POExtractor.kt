@@ -36,33 +36,44 @@ class POExtractor {
         Log.d(TAG, "=== PO EXTRACTION START (Strategy: ${Config.PO_EXTRACTION_STRATEGY}) ===")
         Log.d(TAG, "Frame size: ${w}x${h}, ROI: ${roiW}x${roiH} at ($roiX, $roiY)")
 
+        // ✅ Ensure all bitmaps are cleaned up
+        var poBitmap: Bitmap? = null
+        var processedBitmap: Bitmap? = null
+        var finalBitmap: Bitmap? = null
+
         try {
             // Extract ROI
-            val poBitmap = Bitmap.createBitmap(bitmap, roiX, roiY, roiW, roiH)
+            poBitmap = Bitmap.createBitmap(bitmap, roiX, roiY, roiW, roiH)
 
             // Smart upscaling based on strategy
             val targetWidth = Config.PO_UPSCALE_WIDTH
             val targetHeight = (roiH.toFloat() / roiW.toFloat() * targetWidth).toInt()
 
-            val processedBitmap = if (targetWidth != roiW) {
+            processedBitmap = if (targetWidth != roiW) {
                 val scaled = Bitmap.createScaledBitmap(poBitmap, targetWidth, targetHeight, true)
-                poBitmap.recycle()
+                poBitmap?.recycle()
+                poBitmap = null
                 Log.d(TAG, "Upscaled to: ${targetWidth}x${targetHeight}")
                 scaled
             } else {
                 Log.d(TAG, "No upscaling (using original size)")
-                poBitmap
+                val temp = poBitmap
+                poBitmap = null
+                temp
             }
 
             // Conditional brightness boost based on strategy
-            val finalBitmap = if (Config.PO_BRIGHTNESS_BOOST > 0) {
+            finalBitmap = if (Config.PO_BRIGHTNESS_BOOST > 0) {
                 val boosted = applyBrightnessBoost(processedBitmap, Config.PO_BRIGHTNESS_BOOST)
-                processedBitmap.recycle()
+                processedBitmap?.recycle()
+                processedBitmap = null
                 Log.d(TAG, "Brightness boost: +${Config.PO_BRIGHTNESS_BOOST}")
                 boosted
             } else {
                 Log.d(TAG, "No brightness boost")
-                processedBitmap
+                val temp = processedBitmap
+                processedBitmap = null
+                temp
             }
 
             val image = InputImage.fromBitmap(finalBitmap, 0)
@@ -70,7 +81,8 @@ class POExtractor {
             val task = textRecognizer.process(image)
             val visionText = Tasks.await(task) // Synchronous!
 
-            finalBitmap.recycle()
+            finalBitmap?.recycle()
+            finalBitmap = null
 
             Log.i(TAG, "OCR Raw Text:\n${visionText.text}")
             Log.i(TAG, "Total text blocks: ${visionText.textBlocks.size}")
@@ -146,6 +158,11 @@ class POExtractor {
 
         } catch (e: Exception) {
             Log.e(TAG, "PO Extraction Error", e)
+        } finally {
+            // ✅ CRITICAL: Cleanup any remaining bitmaps
+            poBitmap?.recycle()
+            processedBitmap?.recycle()
+            finalBitmap?.recycle()
         }
 
         Log.d(TAG, "=== PO EXTRACTION END ===")

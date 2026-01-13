@@ -245,35 +245,26 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         if (now - lastProcessTime < (1000L / Config.MAX_PROCESSING_FPS)) return
         lastProcessTime = now
 
-        // ✅ OPTIMIZATION 4: Efficient MJPEG decode with minimal allocations
         try {
-            // Reuse MatOfByte buffer (no new allocation)
+            // Decode frame
             mMatOfByte.fromArray(*data)
-
-            // Decode MJPEG → BGR
             val decoded = Imgcodecs.imdecode(mMatOfByte, Imgcodecs.IMREAD_COLOR)
 
             if (decoded.empty()) {
                 decoded.release()
-
-                // ✅ FALLBACK: Switch to YUV mode
                 if (!isUsingYuvFallback) {
                     Log.w(TAG, "[FALLBACK] MJPEG decode failed, switching to YUV mode")
                     isUsingYuvFallback = true
                 }
-
                 mYuv?.put(0, 0, data)
                 Imgproc.cvtColor(mYuv, mRgba, Imgproc.COLOR_YUV2RGBA_NV21)
             } else {
-                // ✅ SUCCESS: MJPEG decoded
                 if (isUsingYuvFallback) {
                     Log.i(TAG, "[RECOVERY] MJPEG decode restored")
                     isUsingYuvFallback = false
                 }
-
                 decoded.copyTo(mBgr)
                 decoded.release()
-
                 Imgproc.cvtColor(mBgr, mRgba, Imgproc.COLOR_BGR2RGBA)
             }
         } catch (e: Exception) {
@@ -281,20 +272,25 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             return
         }
 
-        if (mRgba.empty()) {
-            return
-        }
+        if (mRgba.empty()) return
 
-        // ✅ OPTIMIZATION 5: Direct grayscale conversion
+        // Grayscale conversion
         Imgproc.cvtColor(mRgba, mGray, Imgproc.COLOR_RGBA2GRAY)
 
-        // Create Bitmap for Scanning (Only if needed or periodically? BoxProcessor decides usage)
-        // We create it every frame that passes FPS check to enable synchronous scanning inside
-        // BoxProcessor
-        val scanBitmap = createScanBitmap()
+        // ✅ FIX: Create bitmap và đảm bảo cleanup
+        var scanBitmap: Bitmap? = null
+        try {
+            scanBitmap = createScanBitmap()
 
-        // Call Update Logic
-        boxProcessor.updateLogic(mGray, scanBitmap)
+            // Call Update Logic
+            boxProcessor.updateLogic(mGray, scanBitmap)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in processing logic", e)
+        } finally {
+            // ✅ CRITICAL: Always recycle bitmap
+            scanBitmap?.recycle()
+        }
 
         // Update UI
         updateUI()
@@ -303,13 +299,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     // ✅ OPTIMIZATION 7: Smart brightness boost
     private fun createScanBitmap(): Bitmap? {
         return try {
-            val srcMat =
-                    if (Config.BRIGHTNESS_BOOST > 0) {
-                        mRgba.convertTo(mBoosted, -1, 1.0, Config.BRIGHTNESS_BOOST.toDouble())
-                        mBoosted
-                    } else {
-                        mRgba
-                    }
+            val srcMat = if (Config.BRIGHTNESS_BOOST > 0) {
+                mRgba.convertTo(mBoosted, -1, 1.0, Config.BRIGHTNESS_BOOST.toDouble())
+                mBoosted
+            } else {
+                mRgba
+            }
 
             val bmp = Bitmap.createBitmap(srcMat.cols(), srcMat.rows(), Bitmap.Config.ARGB_8888)
             Utils.matToBitmap(srcMat, bmp)
