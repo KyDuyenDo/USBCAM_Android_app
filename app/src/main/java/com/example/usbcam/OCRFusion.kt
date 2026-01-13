@@ -12,6 +12,10 @@ class OCRFusion(
 
     private val results = mutableListOf<String>()
 
+    init {
+        Log.i(TAG, "Initialized with maxFrames=$maxFrames, minAgree=$minAgree")
+    }
+
     fun reset() {
         Log.d(TAG, "Reset fusion buffer")
         results.clear()
@@ -105,9 +109,6 @@ class OCRFusion(
 
     /**
      * Sửa các lỗi OCR phổ biến với "PO#"
-     * - P đọc nhầm: P0, PD, P8, etc.
-     * - O đọc nhầm: 0 (số không), Q, D
-     * - # đọc nhầm: H, 4, A, etc.
      */
     private fun fixCommonOCRErrors(s: String): String {
         var result = s
@@ -145,9 +146,6 @@ class OCRFusion(
         // Pattern 9: Các biến thể số 0/chữ O
         result = result.replace(Regex("^P[0O][#H4A]"), "PO#")
 
-        // Pattern 10: Thiếu hoàn toàn "PO#" - chỉ có số ở đầu
-        // Không xử lý vì có thể là barcode
-
         Log.v(TAG, "OCR Error Fix: '$s' -> '$result'")
         return result
     }
@@ -172,11 +170,9 @@ class OCRFusion(
     }
 
     /**
-     * Format mới: 5-12 chữ số thuần (sau khi đã loại bỏ "PO#" prefix)
-     * Ví dụ: "PO# 12345" -> "12345" -> Valid
+     * Format: 5-12 chữ số thuần (sau khi đã loại bỏ "PO#" prefix)
      */
     private fun isValidFormat(s: String): Boolean {
-        // Chỉ chấp nhận số thuần, độ dài 5-12
         val isValid = s.length in Config.MIN_PO_LENGTH..Config.MAX_PO_LENGTH &&
                 s.all { it.isDigit() }
 

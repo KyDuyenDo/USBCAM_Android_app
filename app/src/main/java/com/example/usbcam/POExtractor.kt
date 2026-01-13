@@ -18,9 +18,14 @@ class POExtractor {
     }
 
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    private val ocrFusion = OCRFusion()
+    private val ocrFusion = OCRFusion(
+        maxFrames = Config.PO_FUSION_MAX_FRAMES,
+        minAgree = Config.PO_FUSION_MIN_AGREE
+    )
 
     fun extract(bitmap: Bitmap, barcode: String): String? {
+        val startTime = System.currentTimeMillis()
+
         val w = bitmap.width
         val h = bitmap.height
         val roiW = (w * 0.8).toInt()
@@ -28,30 +33,44 @@ class POExtractor {
         val roiX = (w - roiW) / 2
         val roiY = (h - roiH) / 2
 
-        Log.d(TAG, "=== PO EXTRACTION START ===")
+        Log.d(TAG, "=== PO EXTRACTION START (Strategy: ${Config.PO_EXTRACTION_STRATEGY}) ===")
         Log.d(TAG, "Frame size: ${w}x${h}, ROI: ${roiW}x${roiH} at ($roiX, $roiY)")
 
         try {
             // Extract ROI
             val poBitmap = Bitmap.createBitmap(bitmap, roiX, roiY, roiW, roiH)
 
-            // Upscale to HD quality (1920x1080 or proportional)
-            val targetWidth = 1920
+            // Smart upscaling based on strategy
+            val targetWidth = Config.PO_UPSCALE_WIDTH
             val targetHeight = (roiH.toFloat() / roiW.toFloat() * targetWidth).toInt()
-            val hdBitmap = Bitmap.createScaledBitmap(poBitmap, targetWidth, targetHeight, true)
-            poBitmap.recycle()
-            Log.d(TAG, "Upscaled to HD: ${targetWidth}x${targetHeight}")
 
-            // Apply slight brightness boost while keeping original colors
-            val enhancedBitmap = applyBrightnessBoost(hdBitmap, Config.PO_BRIGHTNESS_BOOST)
-            hdBitmap.recycle()
+            val processedBitmap = if (targetWidth != roiW) {
+                val scaled = Bitmap.createScaledBitmap(poBitmap, targetWidth, targetHeight, true)
+                poBitmap.recycle()
+                Log.d(TAG, "Upscaled to: ${targetWidth}x${targetHeight}")
+                scaled
+            } else {
+                Log.d(TAG, "No upscaling (using original size)")
+                poBitmap
+            }
 
-            val image = InputImage.fromBitmap(enhancedBitmap, 0)
+            // Conditional brightness boost based on strategy
+            val finalBitmap = if (Config.PO_BRIGHTNESS_BOOST > 0) {
+                val boosted = applyBrightnessBoost(processedBitmap, Config.PO_BRIGHTNESS_BOOST)
+                processedBitmap.recycle()
+                Log.d(TAG, "Brightness boost: +${Config.PO_BRIGHTNESS_BOOST}")
+                boosted
+            } else {
+                Log.d(TAG, "No brightness boost")
+                processedBitmap
+            }
+
+            val image = InputImage.fromBitmap(finalBitmap, 0)
 
             val task = textRecognizer.process(image)
             val visionText = Tasks.await(task) // Synchronous!
 
-            enhancedBitmap.recycle()
+            finalBitmap.recycle()
 
             Log.i(TAG, "OCR Raw Text:\n${visionText.text}")
             Log.i(TAG, "Total text blocks: ${visionText.textBlocks.size}")
@@ -111,7 +130,8 @@ class POExtractor {
                     ocrFusion.add(normalized)
                     val fused = ocrFusion.getFused()
                     if (fused != null) {
-                        Log.i(TAG, "🎯 PO FOUND (Fused): $fused")
+                        val elapsedMs = System.currentTimeMillis() - startTime
+                        Log.i(TAG, "🎯 PO FOUND (Fused): $fused [${elapsedMs}ms]")
                         return fused
                     }
                 } else {
@@ -121,7 +141,8 @@ class POExtractor {
                 }
             }
 
-            Log.w(TAG, "No valid PO found (checked ${smartCandidates.size} candidates, $foundCount valid)")
+            val elapsedMs = System.currentTimeMillis() - startTime
+            Log.w(TAG, "No valid PO found (checked ${smartCandidates.size} candidates, $foundCount valid) [${elapsedMs}ms]")
 
         } catch (e: Exception) {
             Log.e(TAG, "PO Extraction Error", e)
@@ -144,9 +165,7 @@ class POExtractor {
             val upper = candidate.uppercase().trim()
 
             // Variation 1: Gộp 2 từ liên tiếp có thể là "PO#" + "123456"
-            // Ví dụ: ["P0#", "123456"] -> "P0#123456"
             if (upper.matches(Regex("^[PO0Q][O0Q]?[#H4A]?$"))) {
-                // Đây có thể là prefix "PO#", tìm số tiếp theo
                 val idx = candidates.indexOf(candidate)
                 if (idx < candidates.size - 1) {
                     val next = candidates[idx + 1].trim()
@@ -159,10 +178,7 @@ class POExtractor {
             }
 
             // Variation 2: Nếu text chứa cả prefix và số, thử tách
-            // Ví dụ: "PO#123456" -> giữ nguyên
-            // Ví dụ: "P0123456" -> có thể là "P0#123456"
             if (upper.length > 6 && upper[0] in "PO0Q") {
-                // Thử insert "#" ở vị trí 2 hoặc 3
                 if (upper.length >= 8) {
                     val v1 = upper.substring(0, 2) + "#" + upper.substring(2)
                     val v2 = upper.substring(0, 3) + "#" + upper.substring(3)
@@ -172,7 +188,6 @@ class POExtractor {
             }
 
             // Variation 3: Nếu toàn số và độ dài hợp lý, giữ nguyên
-            // (có thể prefix bị mất hoàn toàn)
             if (upper.all { it.isDigit() } && upper.length in 5..12) {
                 variations.add(upper)
             }
