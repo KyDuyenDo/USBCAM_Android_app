@@ -16,18 +16,35 @@ import java.util.Locale
 class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoApiService) {
 
     // Used when logic is fully delegated to Repository (API + DB)
+    // Used when logic is fully delegated to Repository (API + DB)
     suspend fun processScan(po: String, barcode: String): PoResponse? {
+        // 1. Try API first
         try {
             val response = apiService.getPoDetailsSuspend(po, barcode)
             if (response.isSuccessful) {
-                val body = response.body() ?: return null
-                saveLocal(po, barcode, body)
-                return body
+                val body = response.body()
+                if (body != null) {
+                    saveLocal(po, barcode, body)
+                    Log.d("ShoeboxRepo", "API Success: $body")
+                    return body
+                }
+            } else {
+                Log.e("ShoeboxRepo", "API Failed: ${response.code()} ${response.message()}")
             }
         } catch (e: Exception) {
+            Log.e("ShoeboxRepo", "API Error (Offline?): ${e.message}")
             e.printStackTrace()
         }
-        return null
+
+        // 2. Fallback to Local DB if API failed
+        Log.d("ShoeboxRepo", "Attempting local fallback for PO=$po, UPC=$barcode")
+        val localData = getLocalPoResponse(po, barcode)
+        if (localData != null) {
+            Log.d("ShoeboxRepo", "Local Fallback Success: $localData")
+        } else {
+            Log.e("ShoeboxRepo", "Local Fallback Failed: No data found")
+        }
+        return localData
     }
 
     // Used when API is called externally (e.g., in Fragment), just save DB
@@ -127,21 +144,25 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
         val today = dateFormat.format(Date())
 
         val startDay = "$today 00:00:00"
-        val endDay = dateFormat.format(
-            Calendar.getInstance().apply {
-                time = Date()
-                add(Calendar.DAY_OF_MONTH, 1)
-            }.time
-        ) + " 00:00:00"
+        val endDay =
+                dateFormat.format(
+                        Calendar.getInstance()
+                                .apply {
+                                    time = Date()
+                                    add(Calendar.DAY_OF_MONTH, 1)
+                                }
+                                .time
+                ) + " 00:00:00"
 
         val details = dao.getDetailsInTimeRange(startDay, endDay)
 
         val slots = mutableListOf<TimeSlotItem>()
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 7)
-            set(Calendar.MINUTE, 30)
-            set(Calendar.SECOND, 0)
-        }
+        val calendar =
+                Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 7)
+                    set(Calendar.MINUTE, 30)
+                    set(Calendar.SECOND, 0)
+                }
 
         var index = 1
 
@@ -152,19 +173,20 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
 
             val frameTime = "${timeFormat.format(start)} - ${timeFormat.format(end)}"
 
-            val count = details.count {
-                val scanTime = dbFormat.parse(it.DateScan) ?: return@count false
-                scanTime >= start && scanTime < end
-            }
+            val count =
+                    details.count {
+                        val scanTime = dbFormat.parse(it.DateScan) ?: return@count false
+                        scanTime >= start && scanTime < end
+                    }
 
             if (count > 0) {
                 slots.add(
-                    TimeSlotItem(
-                        index = index++,
-                        frameTime = frameTime,
-                        target = target,
-                        quantity = count
-                    )
+                        TimeSlotItem(
+                                index = index++,
+                                frameTime = frameTime,
+                                target = target,
+                                quantity = count
+                        )
                 )
             }
         }
@@ -172,24 +194,25 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
         return slots
     }
 
-
     suspend fun getAllToday(): Int {
         val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val today = sdfDate.format(Date())
 
         val startDay = "$today 00:00:00"
 
-        val endDay = sdfDate.format(
-            Calendar.getInstance().apply {
-                time = Date()
-                add(Calendar.DAY_OF_MONTH, 1)
-            }.time
-        ) + " 00:00:00"
+        val endDay =
+                sdfDate.format(
+                        Calendar.getInstance()
+                                .apply {
+                                    time = Date()
+                                    add(Calendar.DAY_OF_MONTH, 1)
+                                }
+                                .time
+                ) + " 00:00:00"
 
         val details = dao.getDetailsInTimeRange(startDay, endDay)
         return details.size
     }
-
 
     suspend fun getTargetByTimeSlot(): TargetResponse? {
         return try {

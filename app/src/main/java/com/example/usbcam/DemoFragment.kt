@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.usbcam.api.PoApiService
@@ -24,6 +25,7 @@ import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.IAspectRatio
 import java.util.concurrent.ArrayBlockingQueue
+import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.CvType
@@ -284,7 +286,6 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
             // Call Update Logic
             boxProcessor.updateLogic(mGray, scanBitmap)
-
         } catch (e: Exception) {
             Log.e(TAG, "Error in processing logic", e)
         } finally {
@@ -299,12 +300,13 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     // ✅ OPTIMIZATION 7: Smart brightness boost
     private fun createScanBitmap(): Bitmap? {
         return try {
-            val srcMat = if (Config.BRIGHTNESS_BOOST > 0) {
-                mRgba.convertTo(mBoosted, -1, 1.0, Config.BRIGHTNESS_BOOST.toDouble())
-                mBoosted
-            } else {
-                mRgba
-            }
+            val srcMat =
+                    if (Config.BRIGHTNESS_BOOST > 0) {
+                        mRgba.convertTo(mBoosted, -1, 1.0, Config.BRIGHTNESS_BOOST.toDouble())
+                        mBoosted
+                    } else {
+                        mRgba
+                    }
 
             val bmp = Bitmap.createBitmap(srcMat.cols(), srcMat.rows(), Bitmap.Config.ARGB_8888)
             Utils.matToBitmap(srcMat, bmp)
@@ -403,33 +405,25 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         val barcode = boxProcessor.barcode ?: return
         isApiCalling = true
 
-        apiService
-                .getPoDetails(po, barcode)
-                .enqueue(
-                        object : retrofit2.Callback<com.example.usbcam.api.PoResponse> {
-                            override fun onResponse(
-                                    call: retrofit2.Call<com.example.usbcam.api.PoResponse>,
-                                    response: retrofit2.Response<com.example.usbcam.api.PoResponse>
-                            ) {
-                                isApiCalling = false
-                                if (response.isSuccessful && response.body() != null) {
-                                    currentApiResponse = response.body()
-                                    viewModel.saveScanData(po, barcode, response.body()!!)
-                                    boxProcessor.onApiVerification(true)
-                                } else {
-                                    boxProcessor.onApiVerification(false)
-                                }
-                            }
+        lifecycleScope.launch {
+            try {
+                // Use ViewModel to handle verification with fallback
+                val response = viewModel.verifyCode(po, barcode)
 
-                            override fun onFailure(
-                                    call: retrofit2.Call<com.example.usbcam.api.PoResponse>,
-                                    t: Throwable
-                            ) {
-                                isApiCalling = false
-                                boxProcessor.onApiVerification(false)
-                            }
-                        }
-                )
+                isApiCalling = false
+                if (response != null) {
+                    currentApiResponse = response
+                    // viewModel.saveScanData is handled internally in verifyCode/processScan now
+                    boxProcessor.onApiVerification(true)
+                } else {
+                    boxProcessor.onApiVerification(false)
+                }
+            } catch (e: Exception) {
+                isApiCalling = false
+                Log.e(TAG, "Error in verifyCode", e)
+                boxProcessor.onApiVerification(false)
+            }
+        }
     }
 
     private fun handleStateFeedback(newState: AppState) {

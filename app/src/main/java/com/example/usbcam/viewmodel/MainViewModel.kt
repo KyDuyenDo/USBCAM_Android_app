@@ -27,7 +27,6 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
 
-
     private val _totalScan = MutableLiveData<Int>()
     val totalScan: LiveData<Int> = _totalScan
 
@@ -58,6 +57,20 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
         viewModelScope.launch { repository.saveLocal(po, barcode, data) }
         // loadDataForCurrentTimeSlot()
         loadAllTimeSlots()
+        loadTotal()
+    }
+
+    suspend fun verifyCode(po: String, barcode: String): PoResponse? {
+        val result = repository.processScan(po, barcode)
+        if (result != null) {
+            // If we found data (either from API or Local), existing Logic suggests we might want to
+            // refresh UI
+            // repository.saveLocal is already called inside processScan if it came from API.
+            // If it came from Local, we technically don't need to re-save, just refresh UI stats.
+            loadAllTimeSlots()
+            loadTotal()
+        }
+        return result
     }
 
     fun startSyncWorker(context: Context) {
@@ -129,15 +142,12 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
         }
     }
 
-    fun loadTotal(){
+    fun loadTotal() {
         viewModelScope.launch {
             val total = repository.getAllToday()
-            _totalScan.postValue(
-                total
-            )
+            _totalScan.postValue(total)
         }
     }
-
 
     private fun formatTime(time: Long): String {
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
