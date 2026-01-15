@@ -24,9 +24,17 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null) {
-                    saveLocal(po, barcode, body)
-                    Log.d("ShoeboxRepo", "API Success: $body")
+                    Log.d("ShoeboxRepo", "API Success: Body not null, saving local...")
+                    try {
+                        saveLocal(po, barcode, body)
+                        Log.d("ShoeboxRepo", "API Success: Save local done. Returning body.")
+                    } catch (e: Exception) {
+                        Log.e("ShoeboxRepo", "API Success but SaveLocal Failed: ${e.message}")
+                        e.printStackTrace()
+                    }
                     return body
+                } else {
+                    Log.w("ShoeboxRepo", "API Success but Body is NULL")
                 }
             } else {
                 Log.e("ShoeboxRepo", "API Failed: ${response.code()} ${response.message()}")

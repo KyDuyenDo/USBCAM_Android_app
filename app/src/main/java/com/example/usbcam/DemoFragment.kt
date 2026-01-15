@@ -405,22 +405,51 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         val barcode = boxProcessor.barcode ?: return
         isApiCalling = true
 
-        lifecycleScope.launch {
-            try {
-                // Use ViewModel to handle verification with fallback
-                val response = viewModel.verifyCode(po, barcode)
+        apiService
+                .getPoDetails(po, barcode)
+                .enqueue(
+                        object : retrofit2.Callback<com.example.usbcam.api.PoResponse> {
+                            override fun onResponse(
+                                    call: retrofit2.Call<com.example.usbcam.api.PoResponse>,
+                                    response: retrofit2.Response<com.example.usbcam.api.PoResponse>
+                            ) {
+                                isApiCalling = false
+                                if (response.isSuccessful && response.body() != null) {
+                                    val body = response.body()!!
+                                    currentApiResponse = body
+                                    viewModel.saveScanData(po, barcode, body)
+                                    boxProcessor.onApiVerification(true)
+                                } else {
+                                    // Fallback: API returned Check for local data
+                                    fallbackToLocal(po, barcode)
+                                }
+                            }
 
-                isApiCalling = false
-                if (response != null) {
-                    currentApiResponse = response
-                    // viewModel.saveScanData is handled internally in verifyCode/processScan now
-                    boxProcessor.onApiVerification(true)
-                } else {
-                    boxProcessor.onApiVerification(false)
-                }
-            } catch (e: Exception) {
-                isApiCalling = false
-                Log.e(TAG, "Error in verifyCode", e)
+                            override fun onFailure(
+                                    call: retrofit2.Call<com.example.usbcam.api.PoResponse>,
+                                    t: Throwable
+                            ) {
+                                isApiCalling = false
+                                // Fallback: Network failure
+                                Log.e(TAG, "API Failure: ${t.message}, trying fallback...")
+                                fallbackToLocal(po, barcode)
+                            }
+                        }
+                )
+    }
+
+    private fun fallbackToLocal(po: String, barcode: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val localData = viewModel.getLocalData(po, barcode)
+            if (localData != null) {
+                Log.d(TAG, "Fallback Success: Loaded local data")
+                currentApiResponse = localData
+                // Just refresh UI, no need to save again as it's already in DB
+                viewModel.loadAllTimeSlots()
+                viewModel.loadTotal()
+                boxProcessor.onApiVerification(true)
+            } else {
+                Log.e(TAG, "Fallback Failed: No local data found")
                 boxProcessor.onApiVerification(false)
             }
         }

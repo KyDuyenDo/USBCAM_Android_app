@@ -54,10 +54,12 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
 
     fun saveScanData(po: String, barcode: String, data: PoResponse) {
         Log.d("saveScanData", "API Success: $data")
-        viewModelScope.launch { repository.saveLocal(po, barcode, data) }
-        // loadDataForCurrentTimeSlot()
-        loadAllTimeSlots()
-        loadTotal()
+        viewModelScope.launch {
+            repository.saveLocal(po, barcode, data)
+            // loadDataForCurrentTimeSlot()
+            loadAllTimeSlots()
+            loadTotal()
+        }
     }
 
     suspend fun verifyCode(po: String, barcode: String): PoResponse? {
