@@ -1,5 +1,10 @@
 package com.example.usbcam
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.hardware.usb.UsbManager
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -13,7 +18,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-
 
         val factory = com.example.usbcam.viewmodel.MainViewModelFactory(application)
         viewModel =
@@ -29,6 +33,12 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        // Register USB Receiver
+        val filter = IntentFilter()
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+        registerReceiver(usbReceiver, filter)
+
         if (allPermissionsGranted()) {
             startCamera()
         } else {
@@ -39,7 +49,6 @@ class MainActivity : AppCompatActivity() {
             )
         }
     }
-
 
     private fun startCamera() {
         if (supportFragmentManager.findFragmentById(R.id.fragment_container) == null) {
@@ -75,6 +84,33 @@ class MainActivity : AppCompatActivity() {
                 finish()
             }
         }
+    }
+
+    private val usbReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    when (intent.action) {
+                        UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                            android.util.Log.d("MainActivity", "USB Device Attached")
+                        }
+                        UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                            val device =
+                                    intent.getParcelableExtra<android.hardware.usb.UsbDevice>(
+                                            UsbManager.EXTRA_DEVICE
+                                    )
+                            android.util.Log.d(
+                                    "MainActivity",
+                                    "USB Device Detached: ${device?.deviceName}"
+                            )
+                            viewModel.onUsbDeviceDetached(device)
+                        }
+                    }
+                }
+            }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(usbReceiver)
     }
 
     companion object {

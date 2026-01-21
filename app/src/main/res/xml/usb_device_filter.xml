@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Broad filter to catch most USB cameras (Video Class) -->
+    <!-- Class 239 (0xEF), Subclass 2 (0x02), Protocol 1 (0x01) is often used for IAD (Interface Association Descriptor) which includes Video -->
+    <!-- Class 14 (0x0E) is the standard Video Class -->
+    <usb-device class="239" subclass="2" protocol="1" />
+    <usb-device class="14" />
+</resources>

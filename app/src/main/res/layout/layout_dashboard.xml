@@ -28,6 +28,21 @@
             app:layout_constraintTop_toTopOf="parent"
             android:elevation="4dp"/>
 
+        <TextView
+            android:id="@+id/tv_camera_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/orange_warning"
+            android:gravity="center"
+            android:padding="8dp"
+            android:text="USB Camera signal not detected"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/tv_no_internet"
+            android:elevation="4dp"/>
+
         <!-- Top Section: Stats and Table -->
         <LinearLayout
             android:id="@+id/ll_top"
@@ -185,7 +200,9 @@
                         android:textSize="18sp"
                         android:textStyle="bold" />
                     
+                        android:paddingVertical="4dp"/>
                     <TextView
+                        android:id="@+id/tv_live_badge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="LIVE"
@@ -196,6 +213,14 @@
                         android:textStyle="bold"
                         android:paddingHorizontal="8dp"
                         android:paddingVertical="4dp"/>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/sw_camera"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:checked="true"
+                        app:useMaterialThemeColors="true"/>
                 </LinearLayout>
                 
                 <View
@@ -245,6 +270,26 @@
                         android:textStyle="bold"
                         android:elevation="4dp"
                         tools:text="SUCCESS"/>
+
+                    <TextView
+                        android:id="@+id/tv_countdown"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_status_badge"
+                        android:backgroundTint="#80000000"
+                        android:paddingHorizontal="40dp"
+                        android:paddingVertical="20dp"
+                        android:text="5"
+                        android:textColor="@color/white"
+                        android:textSize="120sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        android:elevation="10dp"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:visibility="visible" />
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </LinearLayout>
         </LinearLayout>

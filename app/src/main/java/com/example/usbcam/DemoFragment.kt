@@ -76,6 +76,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private val apiService = PoApiService.create()
     private var isApiCalling = false
 
+    // USB Camera Management
+    private var lastFrameTime = 0L
+    private var signalCheckJob: kotlinx.coroutines.Job? = null
+    private var countdownJob: kotlinx.coroutines.Job? = null
+    private var isSignalLostDialogShowing = false // Prevent duplicate dialogs
+
     // Local Data
     private var targetQuantity = 0
     private var totalProcessedCount = 0
@@ -108,6 +114,14 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        mViewBinding?.swCamera?.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && viewModel.isCameraEnabled.value == false) {
+                viewModel.setCameraEnabled(true)
+            } else if (!isChecked && viewModel.isCameraEnabled.value == true) {
+                viewModel.setCameraEnabled(false)
+            }
+        }
+
         val adapter = TimeSlotAdapter()
         mViewBinding?.recyclerTimeSlot?.apply {
             layoutManager = LinearLayoutManager(context)
@@ -131,6 +145,150 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 ) { isConnected ->
             mViewBinding?.tvNoInternet?.visibility = if (isConnected) View.GONE else View.VISIBLE
         }
+
+        // Camera Management Observers
+        viewModel.isCameraEnabled.observe(viewLifecycleOwner) { enabled ->
+            mViewBinding?.swCamera?.isChecked = enabled
+            mViewBinding?.tvLiveBadge?.visibility = if (enabled) View.VISIBLE else View.GONE
+            if (enabled) {
+                reopenCamera()
+            } else {
+                shutdownCamera()
+            }
+        }
+
+        viewModel.cameraSignalError.observe(viewLifecycleOwner) { error ->
+            mViewBinding?.tvCameraError?.apply {
+                visibility = if (error != null) View.VISIBLE else View.GONE
+                text = error
+            }
+        }
+
+        viewModel.cameraCountdown.observe(viewLifecycleOwner) { value ->
+            mViewBinding?.tvCountdown?.apply {
+                if (value != null) {
+                    visibility = View.VISIBLE
+                    text = value.toString()
+                } else {
+                    visibility = View.GONE
+                }
+            }
+        }
+
+        viewModel.usbNotification.observe(viewLifecycleOwner) { message ->
+            if (message != null) {
+                android.widget.Toast.makeText(
+                                requireContext(),
+                                message,
+                                android.widget.Toast.LENGTH_LONG
+                        )
+                        .show()
+                viewModel.clearUsbNotification()
+            }
+        }
+    }
+
+    private fun reopenCamera() {
+        Log.d(TAG, "Reopening camera: initiating countdown...")
+        shutdownCamera()
+
+        countdownJob =
+                viewLifecycleOwner.lifecycleScope.launch {
+                    for (i in 5 downTo 1) {
+                        viewModel.setCameraCountdown(i)
+                        kotlinx.coroutines.delay(1000)
+                    }
+                    viewModel.setCameraCountdown(null)
+
+                    Log.d(TAG, "Countdown finished, opening camera...")
+                    try {
+                        openCamera()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to open camera", e)
+                    }
+                    startSignalDetection()
+                }
+    }
+
+    private fun shutdownCamera() {
+        Log.d(TAG, "Shutting down camera: stopping countdown, signal detection and preview")
+        countdownJob?.cancel()
+        countdownJob = null
+        viewModel.setCameraCountdown(null)
+        stopSignalDetection()
+        closeCamera()
+        viewModel.setCameraSignalError(null)
+    }
+
+    private fun startSignalDetection() {
+        signalCheckJob?.cancel()
+        lastFrameTime = System.currentTimeMillis()
+        signalCheckJob =
+                viewLifecycleOwner.lifecycleScope.launch {
+                    kotlinx.coroutines.delay(Config.SIGNAL_DETECTION_INITIAL_DELAY_MS)
+                    while (true) {
+                        kotlinx.coroutines.delay(Config.SIGNAL_CHECK_INTERVAL_MS)
+                        val now = System.currentTimeMillis()
+                        if (now - lastFrameTime > Config.CAMERA_SIGNAL_TIMEOUT_MS) {
+                            viewModel.setCameraSignalError("No Camera Signal - Auto Shutting Down")
+                            Log.w(TAG, "Signal lost for too long. Auto shutting down.")
+
+                            // Hiển thị popup thông báo
+                            activity?.runOnUiThread { showSignalLostDialog() }
+
+                            // Auto-shutdown requirement
+                            if (Config.AUTO_DISABLE_ON_SIGNAL_LOSS) {
+                                activity?.runOnUiThread {
+                                    mViewBinding?.swCamera?.isChecked = false
+                                }
+                            }
+                        } else {
+                            viewModel.setCameraSignalError(null)
+                        }
+                    }
+                }
+    }
+
+    /**
+     * Hiển thị popup thông báo khi mất tín hiệu camera. Cho phép user chọn "Thử Lại" hoặc "Đóng".
+     */
+    private fun showSignalLostDialog() {
+        // Prevent multiple dialogs
+        if (activity?.isFinishing == true || !isAdded || isSignalLostDialogShowing) return
+
+        isSignalLostDialogShowing = true
+
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Mất Tín Hiệu Camera")
+                .setMessage(
+                        "Không nhận được tín hiệu từ USB Camera.\n\n" +
+                                "Nguyên nhân có thể:\n" +
+                                "• Camera bị rút ra\n" +
+                                "• Camera không phản hồi\n" +
+                                "• Kết nối USB lỗi\n\n" +
+                                "Bạn có muốn thử kết nối lại không?"
+                )
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton("Thử Lại") { dialog, _ ->
+                    Log.d(TAG, "User chose to retry camera connection")
+                    isSignalLostDialogShowing = false
+                    dialog.dismiss()
+                    // Thử bật lại camera
+                    viewModel.setCameraEnabled(true)
+                }
+                .setNegativeButton("Đóng") { dialog, _ ->
+                    Log.d(TAG, "User dismissed signal lost dialog")
+                    isSignalLostDialogShowing = false
+                    dialog.dismiss()
+                }
+                .setOnDismissListener { isSignalLostDialogShowing = false }
+                .setCancelable(false) // Force user to choose
+                .show()
+    }
+
+    private fun stopSignalDetection() {
+        signalCheckJob?.cancel()
+        signalCheckJob = null
     }
 
     override fun getCameraView(): IAspectRatio? = mViewBinding?.tvCameraRender
@@ -147,6 +305,14 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     ) {
         when (code) {
             ICameraStateCallBack.State.OPENED -> {
+                if (viewModel.isCameraEnabled.value == false) {
+                    Log.i(
+                            TAG,
+                            "Camera opened by library auto-connect, but UI is OFF. Shutting down."
+                    )
+                    shutdownCamera()
+                    return
+                }
                 Log.i(TAG, "Camera opened")
                 cameraInstance = self // Store camera reference
                 addPreviewDataCallBack(this)
@@ -179,6 +345,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             format: IPreviewDataCallBack.DataFormat
     ) {
         if (data == null) return
+        lastFrameTime = System.currentTimeMillis() // Signal detected
 
         // ✅ OPTIMIZATION 3: Only initialize YUV fallback if needed
         if (frameWidth != width || frameHeight != height) {

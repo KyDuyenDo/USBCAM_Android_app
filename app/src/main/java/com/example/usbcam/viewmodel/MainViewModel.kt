@@ -39,6 +39,46 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
     private val _scanResult = MutableLiveData<PoResponse?>()
     val scanResult: LiveData<PoResponse?> = _scanResult
 
+    private val _isCameraEnabled = MutableLiveData<Boolean>(false)
+    val isCameraEnabled: LiveData<Boolean> = _isCameraEnabled
+
+    private val _cameraSignalError = MutableLiveData<String?>(null)
+    val cameraSignalError: LiveData<String?> = _cameraSignalError
+
+    private val _cameraCountdown = MutableLiveData<Int?>(null)
+    val cameraCountdown: LiveData<Int?> = _cameraCountdown
+
+    private val _usbNotification = MutableLiveData<String?>()
+    val usbNotification: LiveData<String?> = _usbNotification
+
+    fun setCameraEnabled(enabled: Boolean) {
+        _isCameraEnabled.postValue(enabled)
+    }
+
+    fun setCameraSignalError(error: String?) {
+        _cameraSignalError.postValue(error)
+    }
+
+    fun setCameraCountdown(value: Int?) {
+        _cameraCountdown.postValue(value)
+    }
+
+    fun onUsbDeviceDetached(device: android.hardware.usb.UsbDevice?) {
+        device?.let {
+            if (com.example.usbcam.utils.UsbHelper.isCameraDevice(it)) {
+                _cameraSignalError.postValue("USB Camera Disconnected!")
+                _usbNotification.postValue("USB Camera was unplugged!")
+                _isCameraEnabled.postValue(false)
+            } else {
+                _usbNotification.postValue("USB Device (${it.vendorId}) Removed")
+            }
+        }
+    }
+
+    fun clearUsbNotification() {
+        _usbNotification.postValue(null)
+    }
+
     fun handleScan(po: String, barcode: String) {
         viewModelScope.launch {
             val result = repository.processScan(po, barcode)
