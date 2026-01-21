@@ -3,117 +3,137 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
+    android:layout_height="match_parent"
+    android:background="@color/bg_main">
 
     <!-- Dashboard UI -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#FFFFFF"
-        android:padding="8dp">
+        android:padding="16dp"
+        android:animateLayoutChanges="true">
 
         <TextView
             android:id="@+id/tv_no_internet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#F44336"
+            android:background="@color/error_red"
             android:gravity="center"
             android:padding="8dp"
             android:text="Mất kết nối Internet"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:textSize="18sp"
             android:textStyle="bold"
             android:visibility="gone"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            android:elevation="4dp"/>
 
         <!-- Top Section: Stats and Table -->
-
-
-        <!-- Divider -->
         <LinearLayout
             android:id="@+id/ll_top"
             android:layout_width="match_parent"
-            android:layout_height="450dp"
+            android:layout_height="0dp"
             android:orientation="horizontal"
+            android:baselineAligned="false"
             app:layout_constraintTop_toBottomOf="@id/tv_no_internet"
-            tools:layout_editor_absoluteX="-57dp">
+            app:layout_constraintHeight_percent="0.55"
+            android:layout_marginBottom="16dp">
 
+            <!-- Card 1: Production Schedule -->
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:padding="8dp">
-
-                <TableLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="#EEEEEE">
-
-                    <TableRow
-                        android:background="#2196F3"
-                        android:padding="4dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:text="STT"
-                            android:textColor="#FFFFFF"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="3"
-                            android:gravity="center"
-                            android:text="Khung giờ"
-                            android:textColor="#FFFFFF"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="2"
-                            android:gravity="center"
-                            android:text="Mục tiêu"
-                            android:textColor="#FFFFFF"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="2"
-                            android:gravity="center"
-                            android:text="Sản lượng"
-                            android:textColor="#FFFFFF"
-                            android:textStyle="bold" />
-                    </TableRow>
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/recyclerTimeSlot"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-
-                </TableLayout>
-
+                android:background="@drawable/bg_card"
+                android:layout_marginEnd="8dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_table_header"
+                    android:paddingVertical="12dp"
+                    android:paddingHorizontal="16dp">
+                     <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Production Schedule"
+                        android:textColor="@color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="@color/primary_blue"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="STT"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="3"
+                        android:gravity="center"
+                        android:text="Khung giờ"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:gravity="center"
+                        android:text="Mục tiêu"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:gravity="center"
+                        android:text="Sản lượng"
+                        android:textColor="@color/white"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerTimeSlot"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:clipToPadding="false"
+                    android:paddingBottom="8dp"/>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_color" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:background="@drawable/bg_table_footer"
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
-                        android:layout_height="35dp"
+                        android:layout_height="wrap_content"
                         android:text="Tổng :"
-                        android:textColor="#333333"
-                        android:textSize="24sp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -123,8 +143,8 @@
                         android:layout_weight="1"
                         android:gravity="center"
                         android:text="160"
-                        android:textColor="#333333"
-                        android:textSize="32sp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="24sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -134,343 +154,471 @@
                         android:layout_weight="1"
                         android:gravity="center"
                         android:text="6"
-                        android:textColor="#333333"
-                        android:textSize="32sp"
+                        android:textColor="@color/error_red"
+                        android:textSize="24sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
             </LinearLayout>
 
+            <!-- Card 2: Camera Feed -->
             <LinearLayout
-                android:layout_width="50dp"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:gravity="center_horizontal"
                 android:orientation="vertical"
-                android:padding="8dp">
-                <com.jiangdg.ausbc.widget.AspectRatioTextureView
-                    android:id="@+id/tvCameraRender"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"/>
+                android:background="@drawable/bg_card"
+                android:layout_marginStart="8dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
-                    android:padding="8dp">
+                    android:padding="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                     <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Live Camera Feed"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                    
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="LIVE"
+                        android:background="@drawable/bg_status_badge"
+                        android:backgroundTint="@color/error_red"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="4dp"/>
+                </LinearLayout>
+                
+                <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_color" />
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="16dp">
+
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        app:layout_constraintDimensionRatio="4:3"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:cardCornerRadius="8dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="@color/black">
+
+                        <com.jiangdg.ausbc.widget.AspectRatioTextureView
+                            android:id="@+id/tvCameraRender"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_gravity="center"/>
+                    </androidx.cardview.widget.CardView>
 
                     <TextView
                         android:id="@+id/tv_status_ok"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        android:layout_marginTop="24dp"
+                        android:background="@drawable/bg_status_badge"
+                        android:backgroundTint="@color/success_green"
+                        android:paddingHorizontal="24dp"
+                        android:paddingVertical="8dp"
                         android:text="OK"
-                        android:textColor="#4CAF50"
-                        android:textSize="72sp"
-                        android:textStyle="bold" />
-
-
-                </LinearLayout>
-
+                        android:textColor="@color/white"
+                        android:textSize="32sp"
+                        android:textStyle="bold"
+                        android:elevation="4dp"
+                        tools:text="SUCCESS"/>
+                </androidx.constraintlayout.widget.ConstraintLayout>
             </LinearLayout>
-
-
-            <!-- Camera View (Required by logic, placed behind) -->
-
-
         </LinearLayout>
 
-        <View
-            android:id="@+id/divider1"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:background="#CCCCCC"
-            app:layout_constraintTop_toBottomOf="@id/ll_top" />
 
-        <!-- Middle Section: Left Info and Center Image -->
+        <!-- Middle Section: Product Info -->
         <LinearLayout
             android:id="@+id/ll_middle"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_height="0dp"
             android:orientation="horizontal"
-            app:layout_constraintTop_toBottomOf="@id/divider1">
+            android:baselineAligned="false"
+            app:layout_constraintTop_toBottomOf="@id/ll_top"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginTop="16dp">
 
+            <!-- Left Group: Info + Image -->
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:orientation="horizontal">
+
+                <!-- Card 3: Product Info -->
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:background="@drawable/bg_card"
                     android:orientation="vertical"
-                    android:padding="12dp">
-                    <!-- ROW -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:paddingVertical="4dp">
-
-                        <TextView
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="Quốc Gia:"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_country"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="GERMANY"
-                            android:textColor="#000000"
-                            android:textSize="18sp" />
-                    </LinearLayout>
-
-                    <!-- ROW -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:paddingVertical="4dp">
-
-                        <TextView
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="Art:"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_art"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="JH9767"
-                            android:textColor="#000000"
-                            android:textSize="18sp" />
-                    </LinearLayout>
-
-                    <!-- ROW -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:paddingVertical="4dp">
-
-                        <TextView
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="Tổng lệnh:"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_total_order"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="300"
-                            android:textColor="#000000"
-                            android:textSize="18sp" />
-                    </LinearLayout>
-
-                    <!-- ROW -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:paddingVertical="4dp">
-
-                        <TextView
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="Hoàn thành:"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_completed"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textColor="#000000"
-                            android:textSize="18sp" />
-                    </LinearLayout>
-
-                    <!-- ROW -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:paddingVertical="4dp">
-
-                        <TextView
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="Còn lại:"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_remaining"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="300"
-                            android:textColor="#FF5722"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <!-- ROW -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:paddingVertical="4dp">
-
-                        <TextView
-                            android:layout_width="110dp"
-                            android:layout_height="wrap_content"
-                            android:text="Lean:"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_lean"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="A1_G01"
-                            android:textColor="#000000"
-                            android:textSize="18sp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <ImageView
-                    android:id="@+id/iv_shoe_image"
-                    android:layout_width="match_parent"
-                    android:layout_height="200dp"
-                    android:layout_weight="1"
-                    android:scaleType="fitCenter"
-                    android:src="@android:drawable/ic_menu_report_image"
-                    tools:srcCompat="@drawable/shoe_placeholder" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="0.4"
-                android:orientation="vertical"
-                android:padding="8dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_marginEnd="8dp">
 
                     <TextView
-                        android:layout_width="80dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Product Information"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:padding="16dp"/>
+                     
+                     <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_color" />
+
+                     <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <!-- Info Rows -->
+                         <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="6dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:text="Quốc Gia:"
+                                android:textColor="@color/text_secondary"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tv_country"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="GERMANY"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                         <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="6dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:text="Art:"
+                                android:textColor="@color/text_secondary"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tv_art"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="JH9767"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                         <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="6dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:text="Tổng lệnh:"
+                                android:textColor="@color/text_secondary"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tv_total_order"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="300"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                         <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="6dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:text="Hoàn thành:"
+                                android:textColor="@color/text_secondary"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tv_completed"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                         <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="6dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:text="Còn lại:"
+                                android:textColor="@color/text_secondary"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tv_remaining"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="300"
+                                android:textColor="@color/error_red"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                         <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="6dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:text="Lean:"
+                                android:textColor="@color/text_secondary"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tv_lean"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="A1_G01"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                     </LinearLayout>
+                </LinearLayout>
+
+                <!-- Card 4: Product Image -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_card"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:layout_marginEnd="8dp">
+                    
+                     <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Current Product"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" 
+                        android:layout_marginBottom="12dp"/>
+                    
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        app:cardCornerRadius="8dp"
+                        app:cardElevation="0dp">
+                        <ImageView
+                            android:id="@+id/iv_shoe_image"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:src="@android:drawable/ic_menu_report_image"
+                            tools:srcCompat="@drawable/shoe_placeholder" />
+                    </androidx.cardview.widget.CardView>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Card 5: Stats (Right Small) -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.4"
+                android:background="@drawable/bg_card"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Stats Rows -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="RY:"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="16sp" 
+                        android:layout_marginEnd="8dp"/>
 
                     <TextView
                         android:id="@+id/tv_ry_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="AH2412-751"
-                        android:textColor="#4CAF50"
-                        android:textSize="20sp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
                         android:textStyle="bold" />
                 </LinearLayout>
+
+                <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_color"
+                        android:layout_marginVertical="4dp"/>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
 
                     <TextView
-                        android:layout_width="80dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Size:"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="16sp"
+                        android:layout_marginEnd="8dp"/>
 
                     <TextView
                         android:id="@+id/tv_size_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="08"
-                        android:textSize="20sp" />
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold"/>
                 </LinearLayout>
+                
+                <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_color"
+                        android:layout_marginVertical="4dp"/>
+
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
 
                     <TextView
-                        android:layout_width="80dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Qty:"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="16sp"
+                        android:layout_marginEnd="8dp"/>
 
                     <TextView
                         android:id="@+id/tv_qty_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="12"
-                        android:textSize="20sp" />
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold"/>
                 </LinearLayout>
+                
+                 <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_color"
+                        android:layout_marginVertical="4dp"/>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
 
                     <TextView
-                        android:layout_width="80dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="PO No:"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="16sp"
+                        android:layout_marginEnd="8dp"/>
 
                     <TextView
                         android:id="@+id/tv_po_value"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="0900005032"
-                        android:textSize="20sp" />
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:ellipsize="end"
+                        android:maxLines="1"/>
                 </LinearLayout>
+                
+                 <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_color"
+                        android:layout_marginVertical="4dp"/>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
 
                     <TextView
-                        android:layout_width="80dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="UPC:"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="16sp"
+                        android:layout_marginEnd="8dp"/>
 
                     <TextView
                         android:id="@+id/tv_upc_value"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="4067898529187"
-                        android:textSize="20sp" />
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:ellipsize="end"
+                        android:maxLines="1" />
                 </LinearLayout>
 
                 <TextView
@@ -478,38 +626,20 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Thời gian (ss.fff): 05.689"
-                    android:textColor="#333333"
-                    android:textSize="16sp" />
+                    android:text="Last Scan: 05.689s"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
 
-                <!-- Hidden Motion Progressbar (Required by logic) -->
+                <!-- Hidden Motion Progressbar -->
                 <ProgressBar
                     android:id="@+id/pbMotion"
                     style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="100dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    android:layout_marginTop="8dp" />
 
             </LinearLayout>
-
-        </LinearLayout>
-
-        <View
-            android:id="@+id/divider2"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:background="#CCCCCC"
-            app:layout_constraintTop_toBottomOf="@id/ll_middle" />
-
-        <!-- Bottom Section: Info List and Status -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/divider2">
 
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>

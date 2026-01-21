@@ -1,7 +1,6 @@
 package com.example.usbcam
 
 import android.graphics.Bitmap
-import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -346,16 +345,32 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                             AppState.SCANNING -> "SCANNING..."
                             AppState.VERIFYING -> "VERIFYING..."
                             AppState.DECODED -> "SUCCESS"
-                            AppState.RESETTING -> "RESET..."
+                            AppState.RESETTING -> "RESET"
                         }
                 updateTextView(binding.tvStatusOk, statusText)
 
                 val colorInt =
                         when (state) {
-                            AppState.SCANNING -> Color.BLUE
-                            AppState.VERIFYING -> Color.parseColor("#FFA500") // Orange
-                            AppState.DECODED -> Color.GREEN
-                            else -> Color.DKGRAY
+                            AppState.SCANNING ->
+                                    androidx.core.content.ContextCompat.getColor(
+                                            requireContext(),
+                                            R.color.primary_blue
+                                    )
+                            AppState.VERIFYING ->
+                                    androidx.core.content.ContextCompat.getColor(
+                                            requireContext(),
+                                            R.color.orange_warning
+                                    )
+                            AppState.DECODED ->
+                                    androidx.core.content.ContextCompat.getColor(
+                                            requireContext(),
+                                            R.color.success_green
+                                    )
+                            else ->
+                                    androidx.core.content.ContextCompat.getColor(
+                                            requireContext(),
+                                            R.color.text_secondary
+                                    )
                         }
 
                 if (binding.tvStatusOk.currentTextColor != colorInt) {

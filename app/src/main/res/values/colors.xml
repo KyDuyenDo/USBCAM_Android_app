@@ -1,5 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Project Colors -->
+    <color name="bg_main">#F5F7FA</color>
+    <color name="bg_surface">#FFFFFF</color>
+    <color name="text_primary">#1A202C</color>
+    <color name="text_secondary">#4A5568</color>
+    <color name="primary_blue">#1976D2</color>
+    <color name="success_green">#4CAF50</color>
+    <color name="success_bg">#E8F5E9</color>
+    <color name="error_red">#F44336</color>
+    <color name="error_bg_hover">#E53935</color>
+    <color name="border_color">#E0E4E8</color>
+    <color name="table_row_alt">#FAFBFC</color>
+    <color name="orange_warning">#FFA500</color>
+    <color name="divider_gray">#E2E8F0</color>
+    <color name="shadow_color">#14000000</color> <!-- Approx 8% opacity black -->
 </resources>
