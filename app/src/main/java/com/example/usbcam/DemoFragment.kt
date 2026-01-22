@@ -2,11 +2,15 @@ package com.example.usbcam
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.TextView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -186,6 +190,120 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 viewModel.clearUsbNotification()
             }
         }
+
+        setupDashboardRfidInput()
+    }
+
+    private fun setupDashboardRfidInput() {
+        mViewBinding?.etDashboardRfid?.apply {
+            showSoftInputOnFocus = false // Chặn bàn phím ảo
+            isFocusableInTouchMode = true
+            requestFocus()
+
+            // Luôn lấy lại focus nếu mất
+            onFocusChangeListener =
+                    View.OnFocusChangeListener { v, hasFocus ->
+                        if (!hasFocus) v.post { v.requestFocus() }
+                    }
+
+            // Chặn dán nội dung (Paste)
+            isLongClickable = false
+            setTextIsSelectable(false)
+
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE ||
+                                actionId == android.view.inputmethod.EditorInfo.IME_NULL
+                ) {
+                    processDashboardRfid()
+                    true
+                } else false
+            }
+
+            setOnKeyListener { _, keyCode, event ->
+                if (keyCode == android.view.KeyEvent.KEYCODE_ENTER &&
+                                event.action == android.view.KeyEvent.ACTION_DOWN
+                ) {
+                    processDashboardRfid()
+                    true
+                } else false
+            }
+
+            // Chặn nhập tay bằng cách đếm tốc độ (Ví dụ: RFID gõ > 5 ký tự trong 100ms)
+            // Hoặc đơn giản hơn: RFID quét thì EditText sẽ có dữ liệu cực nhanh.
+            addTextChangedListener(
+                    object : android.text.TextWatcher {
+                        private var lastTime = 0L
+                        override fun beforeTextChanged(
+                                s: CharSequence?,
+                                start: Int,
+                                count: Int,
+                                after: Int
+                        ) {
+                            if (after > 0) lastTime = System.currentTimeMillis()
+                        }
+                        override fun onTextChanged(
+                                s: CharSequence?,
+                                start: Int,
+                                before: Int,
+                                count: Int
+                        ) {}
+                        override fun afterTextChanged(s: android.text.Editable?) {
+                            val input = s?.toString() ?: ""
+                            if (input.isNotEmpty()) {
+                                // Nếu là ký tự rác hoặc gõ chậm, ta có thể clear
+                                // Nhưng thường HID RFID rất nhanh, ta tin tưởng key listener/editor
+                                // action.
+                            }
+                        }
+                    }
+            )
+        }
+    }
+
+    private var lastDashboardRfid = ""
+    private var lastRfidTime = 0L
+
+    private fun processDashboardRfid() {
+        val rawInput = mViewBinding?.etDashboardRfid?.text?.toString() ?: ""
+        mViewBinding?.etDashboardRfid?.setText("") // Clear immediately for next scan
+
+        // Clean input: remove \n, \r and spaces
+        val input = rawInput.replace("\n", "").replace("\r", "").trim()
+
+        if (input.isEmpty()) return
+
+        // Anti-stuck: Nếu input dính nhiều mã (thường RFID HID gõ Enter cuối mỗi mã)
+        // Nếu editor action bắt được khi Enter chưa tới hoặc gõ dính, có thể xử lý ở đây.
+
+        val now = System.currentTimeMillis()
+
+        // Debounce: Chống đọc trùng trong 1.5 giây
+        if (input == lastDashboardRfid && (now - lastRfidTime) < 1500) {
+            Log.d("DemoFragment", "RFID Duplicate Ignored: $input")
+            return
+        }
+
+        lastDashboardRfid = input
+        lastRfidTime = now
+
+        // Update UI
+        activity?.runOnUiThread {
+            mViewBinding?.tvDashboardLastRfid?.text = input
+            // Cập nhật thêm icon RFID nếu cần
+            mViewBinding?.ivRfidIcon?.alpha = 1.0f
+        }
+
+        Log.i("DemoFragment", "RFID HID Success: $input")
+
+        // Display pulse effect or toast
+        android.widget.Toast.makeText(
+                        requireContext(),
+                        "Quét thành công: $input",
+                        android.widget.Toast.LENGTH_SHORT
+                )
+                .show()
+
+        // Logic nghiệp vụ tiếp theo (ví dụ: truy vấn database bằng RFID)
     }
 
     private fun reopenCamera() {
