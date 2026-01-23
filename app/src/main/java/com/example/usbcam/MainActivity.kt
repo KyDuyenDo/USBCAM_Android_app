@@ -92,6 +92,8 @@ class MainActivity : AppCompatActivity() {
                     when (intent.action) {
                         UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
                             android.util.Log.d("MainActivity", "USB Device Attached")
+                            // Trigger RFID auto-connect if device is attached
+                            com.example.usbcam.rfid.RfidConnectionManager.getInstance(context).autoConnect()
                         }
                         UsbManager.ACTION_USB_DEVICE_DETACHED -> {
                             val device =

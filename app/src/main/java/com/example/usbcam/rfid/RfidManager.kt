@@ -211,7 +211,7 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
             if (success) {
                 isScanning = true
                 Log.d(TAG, "Started RFID scanning")
-                callback?.onConnectionStatus(true, "Scanning started")
+                // Don't call onConnectionStatus here - it causes infinite loop
             } else {
                 callback?.onError("Failed to send scan command")
             }
@@ -232,7 +232,7 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
             if (success) {
                 isScanning = false
                 Log.d(TAG, "Stopped RFID scanning")
-                callback?.onConnectionStatus(true, "Scanning stopped")
+                // Don't call onConnectionStatus here - it causes infinite loop
             } else {
                 callback?.onError("Failed to send stop command")
             }

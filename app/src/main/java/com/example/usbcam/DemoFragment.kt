@@ -2,15 +2,11 @@ package com.example.usbcam
 
 import android.graphics.Bitmap
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.util.Log
 import android.view.Gravity
-import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
 import android.widget.TextView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -42,6 +38,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private val viewModel: MainViewModel by viewModels {
         MainViewModelFactory(requireActivity().application)
     }
+
+    private val rfidViewModel: com.example.usbcam.viewmodel.RfidViewModel by viewModels()
 
     private var mViewBinding: LayoutDashboardBinding? = null
     private lateinit var boxProcessor: BoxProcessor
@@ -191,144 +189,120 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             }
         }
 
-        setupDashboardRfidInput()
-        setupUsbRfidButton()
+        setupRfidManager()
     }
 
-    private fun setupUsbRfidButton() {
-        mViewBinding?.btnUsbRfid?.setOnClickListener {
-            val rfidDialog = com.example.usbcam.rfid.RfidUsbFragment.newInstance()
-            rfidDialog.setTagCallback(object : com.example.usbcam.rfid.RfidUsbFragment.TagCallback {
-                override fun onRfidTagRead(epc: String) {
-                    // Display the scanned EPC in the dashboard
-                    activity?.runOnUiThread {
-                        mViewBinding?.tvDashboardLastRfid?.text = epc
-                        mViewBinding?.ivRfidIcon?.alpha = 1.0f
-                        
-                        android.widget.Toast.makeText(
-                            requireContext(),
-                            "USB RFID: $epc",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
-                        
-                        Log.i(TAG, "USB RFID Tag Read: $epc")
+    private lateinit var rfidConnectionManager: com.example.usbcam.rfid.RfidConnectionManager
+    private var rfidScanningStarted = false  // Protection flag
+
+    private fun setupRfidManager() {
+        rfidConnectionManager = com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext())
+        
+        // Setup observers for RfidViewModel
+        setupRfidObservers()
+        
+        rfidConnectionManager.setEventCallback(object : com.example.usbcam.rfid.RfidConnectionManager.RfidEventCallback {
+            override fun onConnected(isAutoConnect: Boolean) {
+                activity?.runOnUiThread {
+                    android.widget.Toast.makeText(requireContext(), "RFID Connected ✅", android.widget.Toast.LENGTH_SHORT).show()
+                    rfidViewModel.setConnected(true)
+                    
+                    // Start scanning only once after connection
+                    if (!rfidScanningStarted) {
+                        rfidScanningStarted = true
+                        rfidConnectionManager.startScanning()
+                        rfidViewModel.setScanning(true)
                     }
                 }
-            })
-            rfidDialog.show(parentFragmentManager, "RfidUsbDialog")
+            }
+
+            override fun onDisconnected() {
+                activity?.runOnUiThread {
+                    rfidViewModel.setConnected(false)
+                    rfidScanningStarted = false  // Reset flag on disconnect
+                }
+            }
+
+            override fun onTagRead(epc: String, rssi: Int, antenna: Int, channel: Int) {
+                activity?.runOnUiThread {
+                    Log.i(TAG, "SDK Tag Read: $epc (RSSI: $rssi)")
+                    
+                    // Update ViewModel - it will handle API call automatically
+                    rfidViewModel.onTagRead(epc, rssi, antenna, channel)
+                }
+            }
+
+            override fun onError(message: String) {
+                Log.e(TAG, "RFID Error: $message")
+            }
+
+            override fun onAutoConnectFailed() {
+                activity?.runOnUiThread {
+                    // Requirement 6: Mở màn hình chọn thiết bị khi kết nối thất bại
+                    Log.w(TAG, "Auto-connect failed. Opening selection UI.")
+                    if (isAdded && !isSignalLostDialogShowing) {
+                        val settingsDialog = com.example.usbcam.rfid.RfidSettingsFragment.newInstance()
+                        settingsDialog.show(parentFragmentManager, "RfidSettingsDialog")
+                    }
+                }
+            }
+        })
+
+        // Initialize and try auto-connect
+        rfidConnectionManager.initialize()
+
+        // Setup the RFID Settings icon button
+        mViewBinding?.btnUsbRfid?.setOnClickListener {
+            val settingsDialog = com.example.usbcam.rfid.RfidSettingsFragment.newInstance()
+            settingsDialog.show(parentFragmentManager, "RfidSettingsDialog")
         }
     }
 
-    private fun setupDashboardRfidInput() {
-        mViewBinding?.etDashboardRfid?.apply {
-            showSoftInputOnFocus = false // Chặn bàn phím ảo
-            isFocusableInTouchMode = true
-            requestFocus()
+    private fun setupRfidObservers() {
+        // Connection status
+        rfidViewModel.connectionStatus.observe(viewLifecycleOwner) { status ->
+            mViewBinding?.tvRfidStatus?.text = status
+        }
 
-            // Luôn lấy lại focus nếu mất
-            onFocusChangeListener =
-                    View.OnFocusChangeListener { v, hasFocus ->
-                        if (!hasFocus) v.post { v.requestFocus() }
-                    }
+        // Last EPC
+        rfidViewModel.lastEpc.observe(viewLifecycleOwner) { epc ->
+            mViewBinding?.tvDashboardLastRfid?.text = if (epc.isNotEmpty()) epc else "---"
+            
+            // Update icon alpha
+            mViewBinding?.ivRfidIcon?.alpha = if (epc.isNotEmpty()) 1.0f else 0.3f
+        }
 
-            // Chặn dán nội dung (Paste)
-            isLongClickable = false
-            setTextIsSelectable(false)
-
-            setOnEditorActionListener { _, actionId, _ ->
-                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE ||
-                                actionId == android.view.inputmethod.EditorInfo.IME_NULL
-                ) {
-                    processDashboardRfid()
-                    true
-                } else false
+        // RFID Product Data from API
+        rfidViewModel.rfidData.observe(viewLifecycleOwner) { data ->
+            if (data != null) {
+                mViewBinding?.apply {
+                    llRfidProductInfo.visibility = View.VISIBLE
+                    tvRfidModel.text = data.model
+                    tvRfidArticle.text = data.article
+                    tvRfidPo.text = data.po
+                    tvRfidColor.text = data.color
+                    tvRfidSize.text = data.size
+                }
+            } else {
+                mViewBinding?.llRfidProductInfo?.visibility = View.GONE
             }
+        }
 
-            setOnKeyListener { _, keyCode, event ->
-                if (keyCode == android.view.KeyEvent.KEYCODE_ENTER &&
-                                event.action == android.view.KeyEvent.ACTION_DOWN
-                ) {
-                    processDashboardRfid()
-                    true
-                } else false
+        // Error messages (show as toast)
+        rfidViewModel.errorMessage.observe(viewLifecycleOwner) { error ->
+            if (error != null) {
+                android.widget.Toast.makeText(requireContext(), error, android.widget.Toast.LENGTH_SHORT).show()
+                rfidViewModel.clearError()
             }
-
-            // Chặn nhập tay bằng cách đếm tốc độ (Ví dụ: RFID gõ > 5 ký tự trong 100ms)
-            // Hoặc đơn giản hơn: RFID quét thì EditText sẽ có dữ liệu cực nhanh.
-            addTextChangedListener(
-                    object : android.text.TextWatcher {
-                        private var lastTime = 0L
-                        override fun beforeTextChanged(
-                                s: CharSequence?,
-                                start: Int,
-                                count: Int,
-                                after: Int
-                        ) {
-                            if (after > 0) lastTime = System.currentTimeMillis()
-                        }
-                        override fun onTextChanged(
-                                s: CharSequence?,
-                                start: Int,
-                                before: Int,
-                                count: Int
-                        ) {}
-                        override fun afterTextChanged(s: android.text.Editable?) {
-                            val input = s?.toString() ?: ""
-                            if (input.isNotEmpty()) {
-                                // Nếu là ký tự rác hoặc gõ chậm, ta có thể clear
-                                // Nhưng thường HID RFID rất nhanh, ta tin tưởng key listener/editor
-                                // action.
-                            }
-                        }
-                    }
-            )
-        }
-    }
-
-    private var lastDashboardRfid = ""
-    private var lastRfidTime = 0L
-
-    private fun processDashboardRfid() {
-        val rawInput = mViewBinding?.etDashboardRfid?.text?.toString() ?: ""
-        mViewBinding?.etDashboardRfid?.setText("") // Clear immediately for next scan
-
-        // Clean input: remove \n, \r and spaces
-        val input = rawInput.replace("\n", "").replace("\r", "").trim()
-
-        if (input.isEmpty()) return
-
-        // Anti-stuck: Nếu input dính nhiều mã (thường RFID HID gõ Enter cuối mỗi mã)
-        // Nếu editor action bắt được khi Enter chưa tới hoặc gõ dính, có thể xử lý ở đây.
-
-        val now = System.currentTimeMillis()
-
-        // Debounce: Chống đọc trùng trong 1.5 giây
-        if (input == lastDashboardRfid && (now - lastRfidTime) < 1500) {
-            Log.d("DemoFragment", "RFID Duplicate Ignored: $input")
-            return
         }
 
-        lastDashboardRfid = input
-        lastRfidTime = now
-
-        // Update UI
-        activity?.runOnUiThread {
-            mViewBinding?.tvDashboardLastRfid?.text = input
-            // Cập nhật thêm icon RFID nếu cần
-            mViewBinding?.ivRfidIcon?.alpha = 1.0f
+        // Info messages
+        rfidViewModel.infoMessage.observe(viewLifecycleOwner) { info ->
+            if (info != null) {
+                android.widget.Toast.makeText(requireContext(), info, android.widget.Toast.LENGTH_SHORT).show()
+                rfidViewModel.clearInfo()
+            }
         }
-
-        Log.i("DemoFragment", "RFID HID Success: $input")
-
-        // Display pulse effect or toast
-        android.widget.Toast.makeText(
-                        requireContext(),
-                        "Quét thành công: $input",
-                        android.widget.Toast.LENGTH_SHORT
-                )
-                .show()
-
-        // Logic nghiệp vụ tiếp theo (ví dụ: truy vấn database bằng RFID)
     }
 
     private fun reopenCamera() {
@@ -780,6 +754,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         }
     }
 
+
     private fun handleStateFeedback(newState: AppState) {
         if (toneGen == null)
                 toneGen =
@@ -823,6 +798,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     override fun onDestroyView() {
         super.onDestroyView()
         mViewBinding = null
+        if (::rfidConnectionManager.isInitialized) {
+            rfidConnectionManager.stopScanning()
+            rfidConnectionManager.setEventCallback(null)
+        }
     }
 
     companion object {

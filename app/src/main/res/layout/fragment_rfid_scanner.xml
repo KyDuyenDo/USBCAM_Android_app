@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#FFFFFF">
+
+        <!-- Title Bar with Settings Button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_status_badge"
+            android:backgroundTint="#1967D2"
+            android:padding="16dp">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@drawable/ic_rfid_card"
+                app:tint="#FFFFFF"
+                android:layout_marginEnd="12dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="RFID Scanner"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"/>
+
+            <ImageView
+                android:id="@+id/btn_settings"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/ic_menu_manage"
+                app:tint="#FFFFFF"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:layout_marginEnd="8dp"/>
+
+            <ImageView
+                android:id="@+id/btn_close"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="#FFFFFF"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"/>
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <!-- Connection Status -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CONNECTION STATUS"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#5F6368"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_connection_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="❌ Disconnected"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#D93025"
+                    android:padding="12dp"
+                    android:background="@drawable/bg_status_badge"
+                    android:backgroundTint="#F8F9FA"
+                    android:layout_marginBottom="20dp"/>
+
+                <!-- Scanned Tag Information -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LAST SCANNED TAG"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#5F6368"
+                    android:letterSpacing="0.1"
+                    android:layout_marginBottom="12dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_status_badge"
+                    android:backgroundTint="#E8F0FE"
+                    android:padding="16dp"
+                    android:layout_marginBottom="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+                        <TextView
+                            android:layout_width="80dp"
+                            android:layout_height="wrap_content"
+                            android:text="EPC:"
+                            android:textSize="13sp"
+                            android:textColor="#5F6368"/>
+                        <TextView
+                            android:id="@+id/tv_epc_value"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="---"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:textColor="#1967D2"
+                            android:fontFamily="monospace"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                        <TextView
+                            android:layout_width="80dp"
+                            android:layout_height="wrap_content"
+                            android:text="RSSI:"
+                            android:textSize="13sp"
+                            android:textColor="#5F6368"/>
+                        <TextView
+                            android:id="@+id/tv_rssi_value"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="0 dBm"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:textColor="#3C4043"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Loading Indicator -->
+                <ProgressBar
+                    android:id="@+id/progress_bar"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp"
+                    tools:visibility="visible"/>
+
+                <!-- Error Message -->
+                <TextView
+                    android:id="@+id/tv_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Error message here"
+                    android:textSize="13sp"
+                    android:textColor="#D93025"
+                    android:padding="12dp"
+                    android:background="@drawable/bg_status_badge"
+                    android:backgroundTint="#FCE8E6"
+                    android:visibility="gone"
+                    android:layout_marginBottom="16dp"
+                    tools:visibility="visible"/>
+
+                <!-- Product Information from API -->
+                <LinearLayout
+                    android:id="@+id/ll_product_info"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PRODUCT INFORMATION"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="#5F6368"
+                        android:letterSpacing="0.1"
+                        android:layout_marginBottom="12dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_status_badge"
+                        android:backgroundTint="#E6F4EA"
+                        android:padding="16dp"
+                        android:layout_marginBottom="20dp">
+
+                        <!-- Model -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+                            <TextView
+                                android:layout_width="80dp"
+                                android:layout_height="wrap_content"
+                                android:text="Model:"
+                                android:textSize="13sp"
+                                android:textColor="#5F6368"/>
+                            <TextView
+                                android:id="@+id/tv_product_model"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Air Max 270"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="#1E8E3E"/>
+                        </LinearLayout>
+
+                        <!-- Article -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+                            <TextView
+                                android:layout_width="80dp"
+                                android:layout_height="wrap_content"
+                                android:text="Article:"
+                                android:textSize="13sp"
+                                android:textColor="#5F6368"/>
+                            <TextView
+                                android:id="@+id/tv_product_article"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="JH9767"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="#3C4043"/>
+                        </LinearLayout>
+
+                        <!-- PO -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+                            <TextView
+                                android:layout_width="80dp"
+                                android:layout_height="wrap_content"
+                                android:text="PO:"
+                                android:textSize="13sp"
+                                android:textColor="#5F6368"/>
+                            <TextView
+                                android:id="@+id/tv_product_po"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="0900005032"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="#3C4043"/>
+                        </LinearLayout>
+
+                        <!-- Color -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginBottom="8dp">
+                            <TextView
+                                android:layout_width="80dp"
+                                android:layout_height="wrap_content"
+                                android:text="Color:"
+                                android:textSize="13sp"
+                                android:textColor="#5F6368"/>
+                            <TextView
+                                android:id="@+id/tv_product_color"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Black/White"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="#3C4043"/>
+                        </LinearLayout>
+
+                        <!-- Size -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+                            <TextView
+                                android:layout_width="80dp"
+                                android:layout_height="wrap_content"
+                                android:text="Size:"
+                                android:textSize="13sp"
+                                android:textColor="#5F6368"/>
+                            <TextView
+                                android:id="@+id/tv_product_size"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="08"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="#3C4043"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Action Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_refresh"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="Refresh"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        android:textColor="#1967D2"
+                        app:strokeColor="#1967D2"
+                        android:layout_marginEnd="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_clear"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="Clear"
+                        android:textSize="13sp"
+                        app:cornerRadius="12dp"
+                        android:textColor="#5F6368"/>
+                </LinearLayout>
+
+            </LinearLayout>
+        </ScrollView>
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

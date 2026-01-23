@@ -18,6 +18,12 @@ interface PoApiService {
 
     @GET("api/select-po") fun getPoDetails(@Query("po") po: String): Call<PoResponse>
 
+    @GET("api/info-rfid")
+    fun getRfidInfo(@Query("rfid") rfid: String): Call<DataRfid>
+
+    @GET("api/info-rfid")
+    suspend fun getRfidInfoSuspend(@Query("rfid") rfid: String): retrofit2.Response<DataRfid>
+
     @GET("api/target-value")
     suspend fun getTargetByLean(
         @Query("depno") depno: String

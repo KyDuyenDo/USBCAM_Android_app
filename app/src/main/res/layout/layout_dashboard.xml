@@ -468,102 +468,243 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:padding="12dp">
+                android:orientation="vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <!-- Header with Settings Icon -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="RFID Scanner (HID)"
-                    android:textColor="@color/text_primary"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="12dp"
+                    android:paddingBottom="8dp">
+
+                    <ImageView
+                        android:id="@+id/iv_rfid_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_rfid_card"
+                        app:tint="@color/primary_blue"
+                        android:layout_marginEnd="8dp"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="RFID Scanner"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"/>
+
+                    <!-- Settings Icon Button -->
+                    <ImageView
+                        android:id="@+id/btn_usb_rfid"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@android:drawable/ic_menu_manage"
+                        app:tint="@color/primary_blue"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:padding="4dp"/>
+                </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="@color/border_color"
-                    android:layout_marginBottom="12dp"/>
-
-                <!-- RFID Input (Hidden from user, always focused) -->
-                <EditText
-                    android:id="@+id/et_dashboard_rfid"
-                    android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:background="@drawable/bg_input_focused"
-                    android:gravity="center"
-                    android:hint="Scan RFID Tag..."
-                    android:inputType="textNoSuggestions"
-                    android:imeOptions="actionDone"
-                    android:textSize="12sp"
-                    android:cursorVisible="false"
-                    android:textColor="@color/primary_blue"
-                    android:layout_marginBottom="16dp"/>
-
-                    <EditText
-    android:id="@+id/et_rfid_input"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:inputType="none"
-    android:focusable="true"
-    android:focusableInTouchMode="true"
-    android:textIsSelectable="false"
-    android:longClickable="false"
-    android:cursorVisible="false"
-    android:background="@android:color/transparent"
-    android:hint="Sẵn sàng quét RFID..."
-    android:visibility="gone" />
-
-                <!-- USB RFID Scanner Button -->
-                <Button
-                    android:id="@+id/btn_usb_rfid"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="USB RFID Scanner"
-                    android:textAllCaps="false"
-                    android:textSize="12sp"
-                    android:backgroundTint="@color/primary_blue"
                     android:layout_marginBottom="8dp"/>
 
-                <LinearLayout
+                <ScrollView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical|center_horizontal">
-
-                    <!-- Reduced Image Size -->
-                    <ImageView
-                        android:id="@+id/iv_rfid_icon"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:src="@drawable/ic_rfid_card"
-                        app:tint="@color/primary_blue"
-                        android:layout_marginEnd="12dp" />
+                    android:fillViewport="true">
 
                     <LinearLayout
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:padding="12dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="LAST SCAN"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="10sp"
-                            android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tv_dashboard_last_rfid"
-                            android:layout_width="wrap_content"
+                        <!-- Last EPC -->
+                        <androidx.constraintlayout.widget.ConstraintLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="---"
-                            android:textColor="@color/primary_blue"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                            android:layout_marginBottom="16dp">
+
+                            <TextView
+                                android:id="@+id/tv_epc_label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="EPC CODE"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="10sp"
+                                android:textStyle="bold"
+                                app:layout_constraintStart_toStartOf="parent"
+                                app:layout_constraintTop_toTopOf="parent"
+                                app:layout_constraintBottom_toBottomOf="parent"/>
+
+                            <TextView
+                                android:id="@+id/tv_dashboard_last_rfid"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="---"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:fontFamily="monospace"
+                                app:layout_constraintStart_toEndOf="@id/tv_epc_label"
+                                app:layout_constraintEnd_toEndOf="parent"
+                                app:layout_constraintTop_toTopOf="@id/tv_epc_label"
+                                app:layout_constraintBottom_toBottomOf="@id/tv_epc_label"/>
+
+                        </androidx.constraintlayout.widget.ConstraintLayout>
+                        <!-- Product Information from API -->
+                        <LinearLayout
+                            android:id="@+id/ll_rfid_product_info"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="PRODUCT INFO"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="10sp"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="8dp"/>
+
+                            <!-- Model -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:layout_marginBottom="6dp">
+                                <TextView
+                                    android:layout_width="60dp"
+                                    android:layout_height="wrap_content"
+                                    android:text="Model:"
+                                    android:textSize="11sp"
+                                    android:textColor="@color/text_secondary"/>
+                                <TextView
+                                    android:id="@+id/tv_rfid_model"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="---"
+                                    android:textSize="11sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/text_primary"/>
+                            </LinearLayout>
+
+                            <!-- Article -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:layout_marginBottom="6dp">
+                                <TextView
+                                    android:layout_width="60dp"
+                                    android:layout_height="wrap_content"
+                                    android:text="Article:"
+                                    android:textSize="11sp"
+                                    android:textColor="@color/text_secondary"/>
+                                <TextView
+                                    android:id="@+id/tv_rfid_article"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="---"
+                                    android:textSize="11sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/text_primary"/>
+                            </LinearLayout>
+
+                            <!-- PO -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:layout_marginBottom="6dp">
+                                <TextView
+                                    android:layout_width="60dp"
+                                    android:layout_height="wrap_content"
+                                    android:text="PO:"
+                                    android:textSize="11sp"
+                                    android:textColor="@color/text_secondary"/>
+                                <TextView
+                                    android:id="@+id/tv_rfid_po"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="---"
+                                    android:textSize="11sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/text_primary"/>
+                            </LinearLayout>
+
+                            <!-- Color -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:layout_marginBottom="6dp">
+                                <TextView
+                                    android:layout_width="60dp"
+                                    android:layout_height="wrap_content"
+                                    android:text="Color:"
+                                    android:textSize="11sp"
+                                    android:textColor="@color/text_secondary"/>
+                                <TextView
+                                    android:id="@+id/tv_rfid_color"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="---"
+                                    android:textSize="11sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/text_primary"/>
+                            </LinearLayout>
+
+                            <!-- Size -->
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal">
+                                <TextView
+                                    android:layout_width="60dp"
+                                    android:layout_height="wrap_content"
+                                    android:text="Size:"
+                                    android:textSize="11sp"
+                                    android:textColor="@color/text_secondary"/>
+                                <TextView
+                                    android:id="@+id/tv_rfid_size"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:text="---"
+                                    android:textSize="11sp"
+                                    android:textStyle="bold"
+                                    android:textColor="@color/text_primary"/>
+                            </LinearLayout>
+
+                            <!-- Connection Status -->
+                            <TextView
+                                android:id="@+id/tv_rfid_status"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="• Not Connected"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginBottom="12dp"/>
+
+                        </LinearLayout>
+
                     </LinearLayout>
-                </LinearLayout>
+                </ScrollView>
+
             </LinearLayout>
 
         </LinearLayout>
