@@ -67,7 +67,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun setConnected(connected: Boolean) {
         _isConnected.value = connected
-        _connectionStatus.value = if (connected) "✅ Connected" else "❌ Disconnected"
+        _connectionStatus.value = if (connected) "Connected" else "Disconnected"
         
         if (!connected) {
             // Reset scanning state when disconnected
@@ -81,9 +81,9 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
     fun setScanning(scanning: Boolean) {
         _isScanning.value = scanning
         _connectionStatus.value = when {
-            !_isConnected.value!! -> "❌ Disconnected"
-            scanning -> "✅ Connected - Scanning..."
-            else -> "✅ Connected"
+            !_isConnected.value!! -> "Disconnected"
+            scanning -> "Connected - Scanning..."
+            else -> "Connected"
         }
     }
 
@@ -133,7 +133,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
                     _rfidData.value = data
                     
                     Log.d(TAG, "RFID Info Success: PO=${data.po}, Article=${data.article}, Size=${data.size}")
-                    _infoMessage.value = "✅ Found: ${data.article} - Size ${data.size}"
+                    // _infoMessage.value = "Found: ${data.article} - Size ${data.size}"
                 } else {
                     _rfidData.value = null
                     _errorMessage.value = "RFID not found in database (${response.code()})"

@@ -105,13 +105,13 @@ class RfidConnectionManager private constructor(private val context: Context) {
             override fun onConnectionStatus(connected: Boolean, message: String) {
                 isConnected = connected
                 if (connected) {
-                    Log.i(TAG, "✅ Connected: $message")
+                    Log.i(TAG, "Connected: $message")
                     // Check if this was auto-connect or manual
                     val isAuto = message.contains("auto", ignoreCase = true) || 
                                  message.contains("mặc định", ignoreCase = true)
                     eventCallback?.onConnected(isAuto)
                 } else {
-                    Log.w(TAG, "❌ Disconnected: $message")
+                    Log.w(TAG, "Disconnected: $message")
                     eventCallback?.onDisconnected()
                 }
             }
