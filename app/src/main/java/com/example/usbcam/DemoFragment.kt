@@ -192,6 +192,31 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         }
 
         setupDashboardRfidInput()
+        setupUsbRfidButton()
+    }
+
+    private fun setupUsbRfidButton() {
+        mViewBinding?.btnUsbRfid?.setOnClickListener {
+            val rfidDialog = com.example.usbcam.rfid.RfidUsbFragment.newInstance()
+            rfidDialog.setTagCallback(object : com.example.usbcam.rfid.RfidUsbFragment.TagCallback {
+                override fun onRfidTagRead(epc: String) {
+                    // Display the scanned EPC in the dashboard
+                    activity?.runOnUiThread {
+                        mViewBinding?.tvDashboardLastRfid?.text = epc
+                        mViewBinding?.ivRfidIcon?.alpha = 1.0f
+                        
+                        android.widget.Toast.makeText(
+                            requireContext(),
+                            "USB RFID: $epc",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        
+                        Log.i(TAG, "USB RFID Tag Read: $epc")
+                    }
+                }
+            })
+            rfidDialog.show(parentFragmentManager, "RfidUsbDialog")
+        }
     }
 
     private fun setupDashboardRfidInput() {

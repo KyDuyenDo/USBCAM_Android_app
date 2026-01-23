@@ -512,7 +512,19 @@
     android:longClickable="false"
     android:cursorVisible="false"
     android:background="@android:color/transparent"
-    android:hint="Sẵn sàng quét RFID..." />
+    android:hint="Sẵn sàng quét RFID..."
+    android:visibility="gone" />
+
+                <!-- USB RFID Scanner Button -->
+                <Button
+                    android:id="@+id/btn_usb_rfid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="USB RFID Scanner"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    android:backgroundTint="@color/primary_blue"
+                    android:layout_marginBottom="8dp"/>
 
                 <LinearLayout
                     android:layout_width="match_parent"

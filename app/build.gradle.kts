@@ -11,7 +11,7 @@ android {
     defaultConfig {
         applicationId = "com.example.usbcam"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
@@ -73,4 +73,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+    
+    // CF RFID SDK for USB tag reading
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
 }
