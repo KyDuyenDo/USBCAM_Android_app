@@ -690,6 +690,23 @@
                                     android:textColor="@color/text_primary"/>
                             </LinearLayout>
 
+                            <!-- Comparison Result (Mismatch Warning) -->
+                            <TextView
+                                android:id="@+id/tv_rfid_comparison_result"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:layout_marginBottom="12dp"
+                                android:background="@drawable/bg_status_badge"
+                                android:backgroundTint="@color/error_red"
+                                android:padding="8dp"
+                                android:text="⚠️ Data Mismatch"
+                                android:textColor="@color/white"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:visibility="gone"
+                                tools:visibility="visible"/>
+
                             <!-- Connection Status -->
                             <TextView
                                 android:id="@+id/tv_rfid_status"

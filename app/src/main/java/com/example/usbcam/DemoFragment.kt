@@ -303,6 +303,21 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 rfidViewModel.clearInfo()
             }
         }
+
+        // Comparison Result (Mismatch Warning)
+        rfidViewModel.comparisonError.observe(viewLifecycleOwner) { error ->
+            mViewBinding?.apply {
+                if (error != null) {
+                    tvRfidComparisonResult.visibility = View.VISIBLE
+                    tvRfidComparisonResult.text = error
+                    
+                    // Requirement: Only display a notification if discrepancies are found
+                    android.widget.Toast.makeText(requireContext(), error, android.widget.Toast.LENGTH_LONG).show()
+                } else {
+                    tvRfidComparisonResult.visibility = View.GONE
+                }
+            }
+        }
     }
 
     private fun reopenCamera() {
