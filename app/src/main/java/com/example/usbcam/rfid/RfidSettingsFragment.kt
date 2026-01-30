@@ -140,18 +140,18 @@ class RfidSettingsFragment : DialogFragment() {
 
     private fun connectToSelectedDevice() {
         if (deviceList.isEmpty()) {
-            updateStatus("❌ Không có thiết bị để kết nối")
+            updateStatus("Không có thiết bị để kết nối")
             return
         }
         
         val selectedPosition = spinnerDevices.selectedItemPosition
         if (selectedPosition < 0 || selectedPosition >= deviceList.size) {
-            updateStatus("❌ Vui lòng chọn thiết bị")
+            updateStatus("Vui lòng chọn thiết bị")
             return
         }
         
         val device = deviceList[selectedPosition]
-        updateStatus("🔄 Đang kết nối...")
+        updateStatus("Đang kết nối...")
         
         connectionManager.connectManually(device.first, device.second)
         
@@ -162,7 +162,7 @@ class RfidSettingsFragment : DialogFragment() {
     }
 
     private fun disconnectDevice() {
-        updateStatus("🔌 Đang ngắt kết nối...")
+        updateStatus("Đang ngắt kết nối...")
         connectionManager.disconnect()
         
         view?.postDelayed({
@@ -176,9 +176,9 @@ class RfidSettingsFragment : DialogFragment() {
         
         if (isConnected) {
             val statusText = if (isScanning) {
-                "✅ Đã kết nối - Đang quét thẻ"
+                "Đã kết nối - Đang quét thẻ"
             } else {
-                "✅ Đã kết nối RFID"
+                "Đã kết nối RFID"
             }
             updateStatus(statusText)
             
@@ -192,7 +192,7 @@ class RfidSettingsFragment : DialogFragment() {
             llDeviceSelection.alpha = 0.5f
             
         } else {
-            updateStatus("❌ Chưa kết nối")
+            updateStatus("Chưa kết nối")
             tvDeviceInfo.visibility = View.GONE
             
             btnConnect.isEnabled = deviceList.isNotEmpty()

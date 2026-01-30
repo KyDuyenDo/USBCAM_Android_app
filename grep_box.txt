@@ -1,0 +1,14 @@
+﻿D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\BoxProcessor.kt:7:class BoxProcessor {
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\BoxProcessor.kt:10:        private const val TAG = "BoxProcessor"
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:45:    private lateinit var boxProcessor: BoxProcessor
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:106:        boxProcessor = BoxProcessor()
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:571:            boxProcessor.updateLogic(mGray, scanBitmap)
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:611:            val state = boxProcessor.currentState
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:664:                updateTextView(binding.tvUpcValue, boxProcessor.barcode ?: "--")
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:665:                updateTextView(binding.tvPoValue, boxProcessor.po ?: "--")
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:703:        val po = boxProcessor.po ?: return
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:704:        val barcode = boxProcessor.barcode ?: return
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:720:                                    boxProcessor.onApiVerification(true)
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:749:                boxProcessor.onApiVerification(true)
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:752:                boxProcessor.onApiVerification(false)
+D:\Count\app-with-model\USBZ\USBCAM_Android_app\app\src\main\java\com\example\usbcam\DemoFragment.kt:793:        boxProcessor.release()

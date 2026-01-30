@@ -524,41 +524,6 @@
                         android:orientation="vertical"
                         android:padding="12dp">
 
-
-                        <!-- Last EPC -->
-                        <androidx.constraintlayout.widget.ConstraintLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="16dp">
-
-                            <TextView
-                                android:id="@+id/tv_epc_label"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="EPC CODE"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="10sp"
-                                android:textStyle="bold"
-                                app:layout_constraintStart_toStartOf="parent"
-                                app:layout_constraintTop_toTopOf="parent"
-                                app:layout_constraintBottom_toBottomOf="parent"/>
-
-                            <TextView
-                                android:id="@+id/tv_dashboard_last_rfid"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="8dp"
-                                android:text="---"
-                                android:textColor="@color/primary_blue"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:fontFamily="monospace"
-                                app:layout_constraintStart_toEndOf="@id/tv_epc_label"
-                                app:layout_constraintEnd_toEndOf="parent"
-                                app:layout_constraintTop_toTopOf="@id/tv_epc_label"
-                                app:layout_constraintBottom_toBottomOf="@id/tv_epc_label"/>
-
-                        </androidx.constraintlayout.widget.ConstraintLayout>
                         <!-- Product Information from API -->
                         <LinearLayout
                             android:id="@+id/ll_rfid_product_info"
@@ -566,15 +531,6 @@
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
                             android:visibility="gone">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="PRODUCT INFO"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="10sp"
-                                android:textStyle="bold"
-                                android:layout_marginBottom="8dp"/>
 
                             <!-- Model -->
                             <LinearLayout
@@ -701,6 +657,41 @@
                                 android:layout_marginBottom="12dp"/>
 
                         </LinearLayout>
+
+                        <!-- Last EPC -->
+                        <androidx.constraintlayout.widget.ConstraintLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp">
+
+                            <TextView
+                                android:id="@+id/tv_epc_label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="EPC CODE"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="10sp"
+                                android:textStyle="bold"
+                                app:layout_constraintStart_toStartOf="parent"
+                                app:layout_constraintTop_toTopOf="parent"
+                                app:layout_constraintBottom_toBottomOf="parent"/>
+
+                            <TextView
+                                android:id="@+id/tv_dashboard_last_rfid"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="---"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:fontFamily="monospace"
+                                app:layout_constraintStart_toEndOf="@id/tv_epc_label"
+                                app:layout_constraintEnd_toEndOf="parent"
+                                app:layout_constraintTop_toTopOf="@id/tv_epc_label"
+                                app:layout_constraintBottom_toBottomOf="@id/tv_epc_label"/>
+
+                        </androidx.constraintlayout.widget.ConstraintLayout>
 
                     </LinearLayout>
                 </ScrollView>

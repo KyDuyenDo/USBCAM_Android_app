@@ -36,3 +36,21 @@ data class ShoeboxTotal(
     val Line: String?,
     var Synced: Int = 0
 )
+@Entity(tableName = "Data_Shoebox_RFID_Detail")
+data class ShoeboxDetailRfid(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val RY: String?,
+    val Size: String?,
+    val PO: String?,
+    val UPC: String?,
+    val Qty: Int,
+    val Article: String?,
+    val RFID: String?,
+    val Size_RFID: String ?,
+    val PO_RFID: String ?,
+    val UPC_RFID: String?,
+    val Article_RFID: String?,
+    val DateScan: String?,
+    val User_Serial_Key: String?,
+    val Line: String?,
+)

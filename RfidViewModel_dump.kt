@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.example.usbcam.BoxProcessor
 import com.example.usbcam.api.DataRfid
 import com.example.usbcam.api.PoApiService
 import retrofit2.Call
@@ -28,7 +27,6 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private val apiService = PoApiService.create()
-    private lateinit var boxProcessor: BoxProcessor
 
     // Connection state
     private val _isConnected = MutableLiveData<Boolean>(false)
@@ -136,9 +134,6 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
                     
                     Log.d(TAG, "RFID Info Success: PO=${data.po}, Article=${data.article}, Size=${data.size}")
                     // _infoMessage.value = "Found: ${data.article} - Size ${data.size}"
-                    
-                    // Comparison logic
-                    fetchPoInfo(data.po ?: "")
                 } else {
                     _rfidData.value = null
                     _errorMessage.value = "RFID not found in database (${response.code()})"
@@ -189,33 +184,6 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
             fetchRfidInfo(currentEpc)
         } else {
             _errorMessage.value = "No RFID tag scanned yet"
-        }
-    }
-
-    /**
-     * Initialize BoxProcessor to allow PO comparison
-     */
-    fun initBoxProcessor(processor: BoxProcessor) {
-        this.boxProcessor = processor
-    }
-
-    /**
-     * Compare RFID PO with Camera PO from BoxProcessor
-     */
-    private fun fetchPoInfo(rfidPo: String) {
-        if (!::boxProcessor.isInitialized) {
-            Log.e(TAG, "Cannot compare PO: boxProcessor not initialized")
-            return
-        }
-
-        val cameraPo = boxProcessor.po
-        Log.d(TAG, "Comparing POs: RFID=$rfidPo, Camera=$cameraPo")
-        if (cameraPo != null && rfidPo.isNotEmpty()) {
-            if (rfidPo == cameraPo) {
-                _infoMessage.postValue("MATCH: RFID and Camera PO are identical ($rfidPo)")
-            } else {
-                _errorMessage.postValue("RFID PO ($rfidPo) !=  Camera PO ($cameraPo)")
-            }
         }
     }
 }

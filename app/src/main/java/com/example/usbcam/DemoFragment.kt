@@ -190,6 +190,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         }
 
         setupRfidManager()
+        rfidViewModel.initBoxProcessor(boxProcessor)
     }
 
     private lateinit var rfidConnectionManager: com.example.usbcam.rfid.RfidConnectionManager
