@@ -44,11 +44,11 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private var mViewBinding: LayoutDashboardBinding? = null
     private lateinit var boxProcessor: BoxProcessor
 
-    // ✅ OPTIMIZATION 1: Reuse MatOfByte buffer (avoid allocation per frame)
+    // OPTIMIZATION 1: Reuse MatOfByte buffer (avoid allocation per frame)
     // Lazy initialization after OpenCV loads
     private lateinit var mMatOfByte: MatOfByte
 
-    // ✅ OPTIMIZATION 2: Pre-allocate all Mats once
+    //  OPTIMIZATION 2: Pre-allocate all Mats once
     private lateinit var mBgr: Mat // Decoded BGR from MJPEG
     private lateinit var mRgba: Mat // RGBA for display/bitmap
     private lateinit var mGray: Mat // Grayscale for processing

@@ -162,7 +162,7 @@ class RfidConnectionManager private constructor(private val context: Context) {
                     }
                     
                     if (targetDevice != null) {
-                        Log.i(TAG, "✅ Found default RFID device, connecting... (attempt ${retryCount + 1}/$AUTO_CONNECT_RETRY_COUNT)")
+                        Log.i(TAG, "Found default RFID device, connecting... (attempt ${retryCount + 1}/$AUTO_CONNECT_RETRY_COUNT)")
                         rfidManager.connectDevice(DEFAULT_PRODUCT_ID, DEFAULT_VENDOR_ID)
                         
                         // Đợi một chút để kiểm tra kết quả
@@ -170,11 +170,11 @@ class RfidConnectionManager private constructor(private val context: Context) {
                         
                         if (isConnected) {
                             connected = true
-                            Log.i(TAG, "✅ Auto-connect SUCCESS!")
+                            Log.i(TAG, "Auto-connect SUCCESS!")
                             return@launch
                         }
                     } else {
-                        Log.w(TAG, "❌ Default RFID device not found (VID: 0x${DEFAULT_VENDOR_ID.toString(16)}, PID: 0x${DEFAULT_PRODUCT_ID.toString(16)})")
+                        Log.w(TAG, "Default RFID device not found (VID: 0x${DEFAULT_VENDOR_ID.toString(16)}, PID: 0x${DEFAULT_PRODUCT_ID.toString(16)})")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Auto-connect error: ${e.message}", e)
