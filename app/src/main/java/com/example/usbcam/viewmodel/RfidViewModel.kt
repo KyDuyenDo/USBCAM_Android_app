@@ -35,8 +35,6 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
     private val apiService = PoApiService.create()
 
 
-    private lateinit var boxProcessor: BoxProcessor
-
     // Connection state
     private val _isConnected = MutableLiveData<Boolean>(false)
     val isConnected: LiveData<Boolean> = _isConnected
@@ -186,30 +184,10 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
      * Fetch PO information for comparison
      */
     private fun fetchPoInfo(rfidData: DataRfid) {
-        apiService.getPoDetails(boxProcessor.po as String, boxProcessor.barcode as String ).enqueue(object : Callback<com.example.usbcam.api.PoResponse> {
-            override fun onResponse(
-                call: Call<com.example.usbcam.api.PoResponse>,
-                response: Response<com.example.usbcam.api.PoResponse>
-            ) {
-                _isLoadingRfidInfo.value = false
-                if (response.isSuccessful && response.body() != null) {
-                    val poData = response.body()!!
-                    _poData.value = poData
-                    
-                    // Perform comparison
-                    performComparison(rfidData, poData)
-                } else {
-                    _poData.value = null
-                    _errorMessage.value = "PO ${rfidData.po} not found"
-                }
-            }
-
-            override fun onFailure(call: Call<com.example.usbcam.api.PoResponse>, t: Throwable) {
-                _isLoadingRfidInfo.value = false
-                _poData.value = null
-                _errorMessage.value = "PO API error: ${t.message}"
-            }
-        })
+        if (rfidData.po.isEmpty()) {
+            _errorMessage.value = "PO code is empty"
+            return
+        }
     }
 
     /**
