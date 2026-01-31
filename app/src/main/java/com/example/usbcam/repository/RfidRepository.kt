@@ -70,7 +70,7 @@ class RfidRepository(
         return RfidData(
             rfidCode = rfidCode,
             po = this.po,
-            upc = null, // Not available in DataRfid API response
+            upc = this.barcode, // Not available in DataRfid API response
             ry = null, // Not available in DataRfid API response
             size = this.size,
             article = this.article,

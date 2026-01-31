@@ -284,7 +284,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     tvRfidModel.text = data.model
                     tvRfidArticle.text = data.article
                     tvRfidPo.text = data.po
-                    tvRfidColor.text = data.color
+                    tvRfidUpc.text = data.barcode
                     tvRfidSize.text = data.size
                 }
             } else {
@@ -338,7 +338,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                         // Validation error
                         android.widget.Toast.makeText(
                             requireContext(), 
-                            "❌ ${result.message}", 
+                            "${result.message}",
                             android.widget.Toast.LENGTH_LONG
                         ).show()
                     }
@@ -362,6 +362,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             updateFieldColor(mViewBinding?.tvRfidSize, isMatch)
             updateFieldColor(mViewBinding?.tvSizeValue, isMatch)
         }
+
+        rfidViewModel.isUpcMatch.observe(viewLifecycleOwner){ isMatch ->
+            updateFieldColor(mViewBinding?.tvRfidUpc, isMatch)
+            updateFieldColor(mViewBinding?.tvUpcValue, isMatch)
+        }
+
     }
 
     private fun updateFieldColor(textView: android.widget.TextView?, isMatch: Boolean) {

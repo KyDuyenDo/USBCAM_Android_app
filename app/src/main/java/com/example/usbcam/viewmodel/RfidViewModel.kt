@@ -66,7 +66,10 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
     private val _isSizeMatch = MutableLiveData<Boolean>(true)
     val isSizeMatch: LiveData<Boolean> = _isSizeMatch
 
-    // Error messages
+    private val _isUpcMatch = MutableLiveData<Boolean>(true)
+    val isUpcMatch: LiveData<Boolean> = _isUpcMatch
+
+        // Error messages
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
@@ -196,6 +199,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         _isPoMatch.value = true
         _isArtMatch.value = true
         _isSizeMatch.value = true
+        _isUpcMatch.value = true
     }
 
     /**
@@ -235,6 +239,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         var poMatch = true
         var artMatch = true
         var sizeMatch = true
+        var upcMatch = true
         
         // 1. Compare with current API response (best source)
         val camData = _currentCameraData
@@ -243,6 +248,12 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
             if (!camData.po.isNullOrEmpty() && rfidData.po.isNotEmpty()) {
                 if (camData.po != rfidData.po) {
                     poMatch = false
+                    //mismatches.add("PO Mismatch")
+                }
+            }
+            if (!camData.upc.isNullOrEmpty() && rfidData.barcode.isNotEmpty()) {
+                if (camData.upc != rfidData.barcode) {
+                    upcMatch = false
                     //mismatches.add("PO Mismatch")
                 }
             }
@@ -278,6 +289,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         _isPoMatch.postValue(poMatch)
         _isArtMatch.postValue(artMatch)
         _isSizeMatch.postValue(sizeMatch)
+        _isUpcMatch.postValue(upcMatch)
 
         if (poMatch && artMatch && sizeMatch) {
            // _infoMessage.postValue("✅ MATCH ($epc): Data is identical")
