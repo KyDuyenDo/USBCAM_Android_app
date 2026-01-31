@@ -3,6 +3,7 @@ package com.example.usbcam.domain.usecase
 import android.util.Log
 import com.example.usbcam.data.model.CameraData
 import com.example.usbcam.data.model.ComparisonResult
+import com.example.usbcam.data.model.MismatchDetail
 import com.example.usbcam.data.model.Result
 import com.example.usbcam.data.model.RfidData
 import com.example.usbcam.data.model.ValidationResult
@@ -53,40 +54,44 @@ class ValidateWithRfidUseCase(
                             
                             ValidationResult.Success(
                                 isMatch = true,
-                                message = "✅ RFID Match - Data saved successfully"
+                                message = "✅ RFID Match ($rfidCode) - Data saved successfully"
                             )
                         }
                         is ComparisonResult.Mismatch -> {
                             // MISMATCH → Save to RFID detail table
-                            Log.w(TAG, "⚠️ Data mismatch! Fields: ${comparisonResult.fields}")
+                            Log.w(TAG, "⚠️ Data mismatch for $rfidCode! Details: ${comparisonResult.details}")
                             shoeboxRepository.saveToMismatchTable(
                                 cameraData = cameraData,
                                 rfidData = rfidData,
-                                mismatchFields = comparisonResult.fields
+                                mismatchFields = comparisonResult.details.map { it.field }
                             )
+                            
+                            val mismatchInfo = comparisonResult.details.joinToString("\n") { 
+                                "${it.field}: Cam(${it.cameraValue}) != Rfid(${it.rfidValue})" 
+                            }
                             
                             ValidationResult.Success(
                                 isMatch = false,
-                                message = "⚠️ RFID Mismatch - Saved for review\nFields: ${comparisonResult.fields.joinToString()}"
+                                message = "⚠️ RFID Mismatch ($rfidCode)\n$mismatchInfo"
                             )
                         }
                     }
                 }
                 is Result.Error -> {
-                    Log.e(TAG, "Failed to fetch RFID data: ${rfidResult.message}", rfidResult.exception)
+                    Log.e(TAG, "Failed to fetch RFID data ($rfidCode): ${rfidResult.message}", rfidResult.exception)
                     ValidationResult.Error(
-                        message = "Failed to fetch RFID data: ${rfidResult.message}",
+                        message = "RFID API Error ($rfidCode): ${rfidResult.message}",
                         exception = rfidResult.exception
                     )
                 }
                 is Result.Loading -> {
-                    ValidationResult.Error("Unexpected loading state")
+                    ValidationResult.Error("Unexpected loading state for $rfidCode")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Validation error", e)
+            Log.e(TAG, "Validation error for $rfidCode", e)
             ValidationResult.Error(
-                message = "Validation failed: ${e.message}",
+                message = "Validation failed ($rfidCode): ${e.message}",
                 exception = e
             )
         }
@@ -94,47 +99,47 @@ class ValidateWithRfidUseCase(
 
     /**
      * Compare camera data with RFID data
-     * Returns list of mismatched fields
+     * Returns detailed mismatch information
      */
     private fun compareData(camera: CameraData, rfid: RfidData): ComparisonResult {
-        val mismatchFields = mutableListOf<String>()
+        val details = mutableListOf<MismatchDetail>()
         
         // Compare PO
         if (camera.po != rfid.po && rfid.po != null) {
-            mismatchFields.add("PO")
+            details.add(MismatchDetail("PO", camera.po, rfid.po))
             Log.d(TAG, "PO mismatch: Camera=${camera.po}, RFID=${rfid.po}")
         }
         
         // Compare Size
         if (camera.size != rfid.size && rfid.size != null) {
-            mismatchFields.add("Size")
+            details.add(MismatchDetail("Size", camera.size ?: "null", rfid.size))
             Log.d(TAG, "Size mismatch: Camera=${camera.size}, RFID=${rfid.size}")
         }
         
         // Compare Article
         if (camera.article != rfid.article && rfid.article != null) {
-            mismatchFields.add("Article")
+            details.add(MismatchDetail("Article", camera.article ?: "null", rfid.article))
             Log.d(TAG, "Article mismatch: Camera=${camera.article}, RFID=${rfid.article}")
         }
         
         // Compare UPC (Note: Not available in RFID API, will always be null)
         if (camera.upc != rfid.upc && rfid.upc != null) {
-            mismatchFields.add("UPC")
+            details.add(MismatchDetail("UPC", camera.upc, rfid.upc))
             Log.d(TAG, "UPC mismatch: Camera=${camera.upc}, RFID=${rfid.upc}")
         }
         
         // Compare RY (Note: Not available in RFID API, will always be null)
         if (camera.ry != rfid.ry && rfid.ry != null) {
-            mismatchFields.add("RY")
+            details.add(MismatchDetail("RY", camera.ry ?: "null", rfid.ry))
             Log.d(TAG, "RY mismatch: Camera=${camera.ry}, RFID=${rfid.ry}")
         }
         
-        return if (mismatchFields.isEmpty()) {
+        return if (details.isEmpty()) {
             Log.i(TAG, "All fields match!")
             ComparisonResult.Match
         } else {
-            Log.w(TAG, "Mismatch detected in fields: $mismatchFields")
-            ComparisonResult.Mismatch(mismatchFields)
+            Log.w(TAG, "Mismatch detected: $details")
+            ComparisonResult.Mismatch(details)
         }
     }
 }

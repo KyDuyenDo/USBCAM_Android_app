@@ -35,11 +35,20 @@ data class RfidData(
 )
 
 /**
+ * Details about a mismatched field
+ */
+data class MismatchDetail(
+    val field: String,
+    val cameraValue: String,
+    val rfidValue: String
+)
+
+/**
  * Comparison result between Camera and RFID data
  */
 sealed class ComparisonResult {
     object Match : ComparisonResult()
-    data class Mismatch(val fields: List<String>) : ComparisonResult()
+    data class Mismatch(val details: List<MismatchDetail>) : ComparisonResult()
 }
 
 /**

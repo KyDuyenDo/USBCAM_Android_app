@@ -229,6 +229,17 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         postStateEvent(ICameraStateCallBack.State.CLOSED)
         isPreviewed = false
         releaseEncodeProcessor()
+        
+        // ❗ CRITICAL NATIVE FIX:
+        // Explicitly stop preview and wait for native event thread to idle
+        // before destroying the camera handle. This prevents SIGABRT/mutex crashes.
+        mUvcCamera?.stopPreview()
+        try {
+            Thread.sleep(200) // Safety margin for native cleanup
+        } catch (e: Exception) {
+            // ignore
+        }
+        
         mUvcCamera?.destroy()
         mUvcCamera = null
         if (Utils.debugCamera) {

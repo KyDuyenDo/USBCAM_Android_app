@@ -8,6 +8,7 @@ import androidx.lifecycle.MutableLiveData
 import com.example.usbcam.BoxProcessor
 import com.example.usbcam.api.DataRfid
 import com.example.usbcam.api.PoApiService
+import com.example.usbcam.api.PoResponse
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -48,9 +49,22 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
     private val _rfidData = MutableLiveData<DataRfid?>()
     val rfidData: LiveData<DataRfid?> = _rfidData
 
+    // Camera data for comparison
+    private var _currentCameraData: PoResponse? = null
+
     // Loading state
     private val _isLoadingRfidInfo = MutableLiveData<Boolean>(false)
     val isLoadingRfidInfo: LiveData<Boolean> = _isLoadingRfidInfo
+
+    // Field match states
+    private val _isPoMatch = MutableLiveData<Boolean>(true)
+    val isPoMatch: LiveData<Boolean> = _isPoMatch
+
+    private val _isArtMatch = MutableLiveData<Boolean>(true)
+    val isArtMatch: LiveData<Boolean> = _isArtMatch
+
+    private val _isSizeMatch = MutableLiveData<Boolean>(true)
+    val isSizeMatch: LiveData<Boolean> = _isSizeMatch
 
     // Error messages
     private val _errorMessage = MutableLiveData<String?>()
@@ -108,8 +122,9 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         _lastEpc.value = trimmedEpc
         _lastRssi.value = rssi
         
-        // Automatically fetch RFID information from API with trimmed EPC
-       // fetchRfidInfo(trimmedEpc)
+        // FIX: Automatically fetch RFID information from API with trimmed EPC
+        // This ensures the UI shows product info (Model, Article, etc.) as soon as scanned
+        fetchRfidInfo(trimmedEpc)
     }
 
     /**
@@ -138,10 +153,10 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
                     // _infoMessage.value = "Found: ${data.article} - Size ${data.size}"
                     
                     // Comparison logic
-                    fetchPoInfo(data.po ?: "")
+                    performDetailedComparison(data)
                 } else {
                     _rfidData.value = null
-                    _errorMessage.value = "RFID not found in database (${response.code()})"
+                      //_errorMessage.value = "RFID not found in database (${response.code()})"
                     Log.w(TAG, "RFID not found: ${response.code()}")
                 }
             }
@@ -149,7 +164,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
             override fun onFailure(call: Call<DataRfid>, t: Throwable) {
                 _isLoadingRfidInfo.value = false
                 _rfidData.value = null
-                _errorMessage.value = "Network error: ${t.message}"
+               // _errorMessage.value = "Network error: ${t.message}"
                 Log.e(TAG, "API call failed", t)
             }
         })
@@ -178,6 +193,9 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         _rfidData.value = null
         _errorMessage.value = null
         _infoMessage.value = null
+        _isPoMatch.value = true
+        _isArtMatch.value = true
+        _isSizeMatch.value = true
     }
 
     /**
@@ -188,7 +206,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         if (!currentEpc.isNullOrEmpty()) {
             fetchRfidInfo(currentEpc)
         } else {
-            _errorMessage.value = "No RFID tag scanned yet"
+            //_errorMessage.value = "No RFID tag scanned yet"
         }
     }
 
@@ -200,22 +218,73 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Compare RFID PO with Camera PO from BoxProcessor
+     * Set current camera data from API for detailed comparison
      */
-    private fun fetchPoInfo(rfidPo: String) {
-        if (!::boxProcessor.isInitialized) {
-            Log.e(TAG, "Cannot compare PO: boxProcessor not initialized")
+    fun setCurrentCameraResponse(data: PoResponse?) {
+        this._currentCameraData = data
+    }
+
+    /**
+     * Comprehensive comparison of RFID data with Camera/API data
+     */
+    private fun performDetailedComparison(rfidData: DataRfid) {
+        val epc = _lastEpc.value ?: "Unknown"
+        val mismatches = mutableListOf<String>()
+        
+        // Reset matches at start
+        var poMatch = true
+        var artMatch = true
+        var sizeMatch = true
+        
+        // 1. Compare with current API response (best source)
+        val camData = _currentCameraData
+        if (camData != null) {
+            // Compare PO
+            if (!camData.po.isNullOrEmpty() && rfidData.po.isNotEmpty()) {
+                if (camData.po != rfidData.po) {
+                    poMatch = false
+                    //mismatches.add("PO Mismatch")
+                }
+            }
+            // Compare Article
+            if (!camData.article.isNullOrEmpty() && rfidData.article.isNotEmpty()) {
+                if (camData.article != rfidData.article) {
+                    artMatch = false
+                    //mismatches.add("Article Mismatch")
+                }
+            }
+            // Compare Size
+            if (!camData.size.isNullOrEmpty() && rfidData.size.isNotEmpty()) {
+                if (camData.size != rfidData.size) {
+                    sizeMatch = false
+                   // mismatches.add("Size Mismatch")
+                }
+            }
+        } else if (::boxProcessor.isInitialized) {
+            // 2. Fallback to BoxProcessor PO if API response not yet available
+            val cameraPo = boxProcessor.po
+            if (cameraPo != null && rfidData.po.isNotEmpty()) {
+                if (cameraPo != rfidData.po) {
+                    poMatch = false
+                   // mismatches.add("PO Mismatch")
+                }
+            }
+        } else {
+            Log.d(TAG, "No camera data available for comparison yet")
             return
         }
 
-        val cameraPo = boxProcessor.po
-        Log.d(TAG, "Comparing POs: RFID=$rfidPo, Camera=$cameraPo")
-        if (cameraPo != null && rfidPo.isNotEmpty()) {
-            if (rfidPo == cameraPo) {
-                _infoMessage.postValue("MATCH: RFID and Camera PO are identical ($rfidPo)")
-            } else {
-                _errorMessage.postValue("RFID PO ($rfidPo) !=  Camera PO ($cameraPo)")
-            }
+        // Update match LiveDatas
+        _isPoMatch.postValue(poMatch)
+        _isArtMatch.postValue(artMatch)
+        _isSizeMatch.postValue(sizeMatch)
+
+        if (poMatch && artMatch && sizeMatch) {
+           // _infoMessage.postValue("✅ MATCH ($epc): Data is identical")
+        } else {
+            // Requirement: Don't build detailed mismatch strings. 
+            // The UI will highlight incorrect fields in red using the booleans above.
+            //_errorMessage.postValue("⚠️ MISMATCH DETECTED ($epc)")
         }
     }
 }

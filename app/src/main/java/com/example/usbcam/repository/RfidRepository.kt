@@ -7,6 +7,7 @@ import com.example.usbcam.data.model.RfidData
 import com.example.usbcam.api.PoApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.EOFException
 
 /**
  * Repository for RFID operations
@@ -22,32 +23,45 @@ class RfidRepository(
     /**
      * Get RFID information from API
      */
-    suspend fun getRfidInfo(rfidCode: String): Result<RfidData> = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "Fetching RFID info for code: $rfidCode")
-            
-            val response = apiService.getRfidInfoSuspend(rfidCode)
-            
-            if (response.isSuccessful && response.body() != null) {
-                val data = response.body()!!
-                Log.i(TAG, "✅ RFID fetch successful: ${data.po}")
-                
-                Result.Success(data.toRfidData(rfidCode))
-            } else {
-                Log.w(TAG, "⚠️ RFID not found: ${response.code()}")
+
+    suspend fun getRfidInfo(rfidCode: String): Result<RfidData> =
+        withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "Fetching RFID info for code: $rfidCode")
+
+                val response = apiService.getRfidInfoSuspend(rfidCode)
+
+                val body = response.body()
+
+                if (response.isSuccessful && body != null) {
+                    Log.i(TAG, "RFID fetch successful: ${body.po}")
+                    Result.Success(body.toRfidData(rfidCode))
+                } else {
+                    val errorText = response.errorBody()?.string()
+                    Log.w(TAG, "RFID API empty body, code=${response.code()}, error=$errorText")
+
+                    Result.Error(
+                        exception = Exception("Empty response body"),
+                        message = "RFID not found or empty response (HTTP ${response.code()})"
+                    )
+                }
+
+            } catch (e: EOFException) {
+                Log.e(TAG, " Empty response from server", e)
                 Result.Error(
-                    exception = Exception("RFID not found"),
-                    message = "RFID code not found in database (HTTP ${response.code()})"
+                    exception = e,
+                    message = "Server returned empty response"
+                )
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ RFID fetch failed", e)
+                Result.Error(
+                    exception = e,
+                    message = "Failed to fetch RFID info: ${e.message}"
                 )
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ RFID fetch failed", e)
-            Result.Error(
-                exception = e,
-                message = "Failed to fetch RFID info: ${e.message}"
-            )
         }
-    }
+
 
     /**
      * Convert API response to domain model

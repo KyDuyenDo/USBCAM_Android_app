@@ -84,6 +84,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private var countdownJob: kotlinx.coroutines.Job? = null
     private var isSignalLostDialogShowing = false // Prevent duplicate dialogs
 
+    // FIX 1: State guard to prevent race condition during camera shutdown
+    @Volatile private var isCameraStopping = false
+
     // Local Data
     private var targetQuantity = 0
     private var totalProcessedCount = 0
@@ -312,11 +315,16 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     is com.example.usbcam.data.model.ValidationResult.Success -> {
                         if (result.isMatch) {
                             // Data matched or no RFID validation needed
+                            // 🔹 Update last success tracking
+
                             android.widget.Toast.makeText(
                                 requireContext(), 
                                 result.message, 
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
+                            
+                            // 🔹 Reset RFID after successful save 
+                            rfidViewModel.clearRfidData()
                         } else {
                             // Data mismatch - warning
                             android.widget.Toast.makeText(
@@ -338,15 +346,51 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 viewModel.clearValidationResult()
             }
         }
+        
+        // Field match states (Visual feedback: Red text on mismatch)
+        rfidViewModel.isPoMatch.observe(viewLifecycleOwner) { isMatch ->
+            updateFieldColor(mViewBinding?.tvRfidPo, isMatch)
+            updateFieldColor(mViewBinding?.tvPoValue, isMatch)
+        }
+
+        rfidViewModel.isArtMatch.observe(viewLifecycleOwner) { isMatch ->
+            updateFieldColor(mViewBinding?.tvRfidArticle, isMatch)
+            updateFieldColor(mViewBinding?.tvArt, isMatch)
+        }
+
+        rfidViewModel.isSizeMatch.observe(viewLifecycleOwner) { isMatch ->
+            updateFieldColor(mViewBinding?.tvRfidSize, isMatch)
+            updateFieldColor(mViewBinding?.tvSizeValue, isMatch)
+        }
+    }
+
+    private fun updateFieldColor(textView: android.widget.TextView?, isMatch: Boolean) {
+        val colorInt = if (isMatch) {
+            androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_primary)
+        } else {
+            androidx.core.content.ContextCompat.getColor(requireContext(), R.color.error_red)
+        }
+        textView?.setTextColor(colorInt)
     }
 
     private fun reopenCamera() {
+        // FIX 2: Don't reopen camera if fragment is not resumed
+        if (!isResumed) {
+            Log.w(TAG, "Fragment not resumed, skip reopenCamera")
+            return
+        }
+
         Log.d(TAG, "Reopening camera: initiating countdown...")
         shutdownCamera()
 
         countdownJob =
                 viewLifecycleOwner.lifecycleScope.launch {
-                    for (i in 5 downTo 1) {
+                    // Wait for shutdown to complete
+                    while (isCameraStopping) {
+                        kotlinx.coroutines.delay(100)
+                    }
+
+                    for (i in 3 downTo 1) {
                         viewModel.setCameraCountdown(i)
                         kotlinx.coroutines.delay(1000)
                     }
@@ -363,12 +407,41 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     }
 
     private fun shutdownCamera() {
-        Log.d(TAG, "Shutting down camera: stopping countdown, signal detection and preview")
+        // FIX 1: Guard to prevent concurrent shutdown race conditions
+        if (isCameraStopping) {
+            Log.d(TAG, "Camera shutdown already in progress, skipping...")
+            return
+        }
+        isCameraStopping = true
+
+        Log.d(TAG, "Shutting down camera safely...")
+
         countdownJob?.cancel()
         countdownJob = null
         viewModel.setCameraCountdown(null)
         stopSignalDetection()
-        closeCamera()
+
+        // ❗ CRITICAL: Stop processing thread FIRST. 
+        // Use a flag and interrupt, but don't release Mats here as they might still be in use for 1-2ms.
+        stopProcessingThread()
+
+        // ❗ CRITICAL: Remove callback BEFORE closing camera.
+        removePreviewDataCallBack(this)
+
+        // ❗ CRITICAL: Delay to let native USB thread die completely.
+        // Increased to 1000ms for more stability on slower devices.
+        viewLifecycleOwner.lifecycleScope.launch {
+            kotlinx.coroutines.delay(1000) // ⭐ Allow native thread cleanup
+            try {
+                closeCamera()
+                Log.d(TAG, "Camera closed successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error closing camera", e)
+            } finally {
+                isCameraStopping = false
+            }
+        }
+
         viewModel.setCameraSignalError(null)
     }
 
@@ -385,6 +458,11 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                             viewModel.setCameraSignalError("No Camera Signal - Auto Shutting Down")
                             Log.w(TAG, "Signal lost for too long. Auto shutting down.")
 
+                            // FIX 3: STOP CAMERA IMMEDIATELY when signal lost
+                            if (!isCameraStopping) {
+                                shutdownCamera()
+                            }
+
                             // Hiển thị popup thông báo
                             activity?.runOnUiThread { showSignalLostDialog() }
 
@@ -394,6 +472,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                     mViewBinding?.swCamera?.isChecked = false
                                 }
                             }
+                            
+                            // Exit detection loop after shutdown
+                            return@launch
                         } else {
                             viewModel.setCameraSignalError(null)
                         }
@@ -496,7 +577,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             height: Int,
             format: IPreviewDataCallBack.DataFormat
     ) {
-        if (data == null) return
+        // FIX 5: Don't process data if fragment is detached or camera is stopping
+        if (data == null || !isAdded || isCameraStopping) return
         lastFrameTime = System.currentTimeMillis() // Signal detected
 
         //OPTIMIZATION 3: Only initialize YUV fallback if needed
@@ -511,7 +593,11 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             }
         }
 
-        frameQueue.offer(data)
+        // FIX 4: Prevent queue backlog when USB lags - drop oldest frame if full
+        if (!frameQueue.offer(data)) {
+            frameQueue.poll()  // Remove oldest
+            frameQueue.offer(data)  // Add newest
+        }
     }
 
     private fun startProcessingThread() {
@@ -543,22 +629,17 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         processingThread = null
         frameQueue.clear()
 
-        // Release all OpenCV resources
-        try {
-            if (::mMatOfByte.isInitialized) {
-                mMatOfByte.release()
-                mBgr.release()
-                mRgba.release()
-                mGray.release()
-                mBoosted.release()
-            }
-            mYuv?.release()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error releasing OpenCV resources", e)
-        }
+        // ❗ REFINEMENT: Don't release OpenCV Mats immediately here.
+        // They are shared objects and the thread might still be in the middle of a processFrame loop.
+        // Let onDestroy or a safe lifecycle event handle it, or just let them stay allocated for the next session.
+        // Releasing them here while a thread is interrupted often causes illegal state/memory access.
+        Log.d(TAG, "Processing thread stopped")
     }
 
     private fun processFrame(data: ByteArray) {
+        // FIX 5: Don't decode if fragment is detached or camera is stopping
+        if (!isAdded || isCameraStopping) return
+
         val now = System.currentTimeMillis()
 
         // FPS limiter
@@ -646,7 +727,16 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             val state = boxProcessor.currentState
 
             if (state == AppState.IDLE) {
-                if (currentApiResponse != null) currentApiResponse = null
+                if (currentApiResponse != null) {
+                    currentApiResponse = null
+                    rfidViewModel.setCurrentCameraResponse(null)
+                }
+                // 🔹 REQUIREMENT: If no box in view (IDLE), reset RFID data
+                // This ensures that "next time" a box comes, the old tag is not used.
+                if (rfidViewModel.lastEpc.value?.isNotEmpty() == true) {
+                    Log.d(TAG, "System IDLE -> Clearing leftover RFID data")
+                    rfidViewModel.clearRfidData()
+                }
             }
 
             if (state != lastState) {
@@ -749,8 +839,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     }
 
     private fun callApi() {
-        val po = boxProcessor.po ?: return
         val barcode = boxProcessor.barcode ?: return
+        val po  = boxProcessor.po ?: return
+
+        
         isApiCalling = true
 
         apiService
@@ -765,6 +857,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                 if (response.isSuccessful && response.body() != null) {
                                     val body = response.body()!!
                                     currentApiResponse = body
+                                    rfidViewModel.setCurrentCameraResponse(body)
                                     
                                     // 🔖 Get scanned RFID code from RfidViewModel
                                     val scannedRfid = rfidViewModel.lastEpc.value?.takeIf { it.isNotBlank() }
@@ -797,6 +890,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             if (localData != null) {
                 Log.d(TAG, "Fallback Success: Loaded local data")
                 currentApiResponse = localData
+                rfidViewModel.setCurrentCameraResponse(localData)
                 // Just refresh UI, no need to save again as it's already in DB
                 viewModel.loadAllTimeSlots()
                 viewModel.loadTotal()
@@ -844,9 +938,26 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     override fun onDestroy() {
         super.onDestroy()
         stopProcessingThread()
+        releaseOpenCvResources()
         boxProcessor.release()
 
         toneGen?.release()
+    }
+
+    private fun releaseOpenCvResources() {
+        try {
+            if (::mMatOfByte.isInitialized) {
+                mMatOfByte.release()
+                mBgr.release()
+                mRgba.release()
+                mGray.release()
+                mBoosted.release()
+            }
+            mYuv?.release()
+            Log.d(TAG, "OpenCV resources released")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing OpenCV resources", e)
+        }
     }
 
     override fun onDestroyView() {
