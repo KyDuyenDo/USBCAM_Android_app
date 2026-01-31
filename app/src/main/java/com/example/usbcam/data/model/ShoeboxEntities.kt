@@ -39,18 +39,27 @@ data class ShoeboxTotal(
 @Entity(tableName = "Data_Shoebox_RFID_Detail")
 data class ShoeboxDetailRfid(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    // Camera Data
     val RY: String?,
     val Size: String?,
     val PO: String?,
     val UPC: String?,
     val Qty: Int,
     val Article: String?,
+    // RFID Data
     val RFID: String?,
-    val Size_RFID: String ?,
-    val PO_RFID: String ?,
+    val Size_RFID: String?,
+    val PO_RFID: String?,
     val UPC_RFID: String?,
     val Article_RFID: String?,
-    val DateScan: String?,
+    val RY_RFID: String?,
+    // Mismatch tracking
+    val MismatchFields: String?, // JSON array: ["PO", "Size", "Article"]
+    // Metadata
+    val DateScan: String,
+    val Modify: String?,
+    val ShoeImage: String?,
     val User_Serial_Key: String?,
     val Line: String?,
+    var Synced: Int = 0 // 0: Not synced, 1: Synced
 )

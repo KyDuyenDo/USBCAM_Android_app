@@ -16,6 +16,10 @@ import androidx.work.WorkManager
 import com.example.usbcam.api.PoApiService
 import com.example.usbcam.api.PoResponse
 import com.example.usbcam.data.db.AppDatabase
+import com.example.usbcam.data.model.ValidationResult
+import com.example.usbcam.domain.usecase.ProcessCameraWithRfidUseCase
+import com.example.usbcam.domain.usecase.ValidateWithRfidUseCase
+import com.example.usbcam.repository.RfidRepository
 import com.example.usbcam.repository.ShoeboxRepository
 import com.example.usbcam.worker.SyncWorker
 import java.text.SimpleDateFormat
@@ -25,7 +29,10 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.launch
 
-class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
+class MainViewModel(
+    private val repository: ShoeboxRepository,
+    private val processCameraWithRfidUseCase: ProcessCameraWithRfidUseCase
+) : ViewModel() {
 
     private val _totalScan = MutableLiveData<Int>()
     val totalScan: LiveData<Int> = _totalScan
@@ -50,6 +57,10 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
 
     private val _usbNotification = MutableLiveData<String?>()
     val usbNotification: LiveData<String?> = _usbNotification
+
+    // RFID Validation result
+    private val _validationResult = MutableLiveData<ValidationResult?>()
+    val validationResult: LiveData<ValidationResult?> = _validationResult
 
     fun setCameraEnabled(enabled: Boolean) {
         _isCameraEnabled.postValue(enabled)
@@ -82,7 +93,16 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
     fun handleScan(po: String, barcode: String) {
         viewModelScope.launch {
             val result = repository.processScan(po, barcode)
-            _scanResult.postValue(result)
+            // Unwrap Result to get PoResponse
+            val poResponse = when (result) {
+                is com.example.usbcam.data.model.Result.Success -> result.data
+                is com.example.usbcam.data.model.Result.Error -> {
+                    Log.e("MainViewModel", "processScan failed: ${result.message}", result.exception)
+                    null
+                }
+                else -> null
+            }
+            _scanResult.postValue(poResponse)
             // loadDataForCurrentTimeSlot()
             loadAllTimeSlots()
         }
@@ -92,19 +112,59 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
         return repository.getLocalPoResponse(po, barcode)
     }
 
-    fun saveScanData(po: String, barcode: String, data: PoResponse) {
-        Log.d("saveScanData", "API Success: $data")
+    fun saveScanData(po: String, barcode: String, data: PoResponse, scannedRfidCode: String? = null) {
+        Log.d("saveScanData", "API Success: $data, RFID: $scannedRfidCode")
         viewModelScope.launch {
-            repository.saveLocal(po, barcode, data)
-            // loadDataForCurrentTimeSlot()
-            loadAllTimeSlots()
-            loadTotal()
+            try {
+                // 🔹 NEW LOGIC: Check for scanned RFID code (from RFID scanner)
+                val result = processCameraWithRfidUseCase.invoke(po, barcode, data, scannedRfidCode)
+                
+                // Post result for UI observation
+                _validationResult.postValue(result)
+                
+                when (result) {
+                    is ValidationResult.Success -> {
+                        Log.i("MainViewModel", "✅ Scan processed: ${result.message}")
+                        // Refresh UI data
+                        loadAllTimeSlots()
+                        loadTotal()
+                    }
+                    is ValidationResult.Error -> {
+                        Log.e("MainViewModel", "❌ Validation error: ${result.message}", result.exception)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error in saveScanData", e)
+                _validationResult.postValue(
+                    ValidationResult.Error(
+                        message = "Failed to save: ${e.message}",
+                        exception = e
+                    )
+                )
+            }
         }
+    }
+    
+    /**
+     * Clear validation result after it's been displayed
+     */
+    fun clearValidationResult() {
+        _validationResult.postValue(null)
     }
 
     suspend fun verifyCode(po: String, barcode: String): PoResponse? {
         val result = repository.processScan(po, barcode)
-        if (result != null) {
+        // Unwrap Result to get PoResponse
+        val poResponse = when (result) {
+            is com.example.usbcam.data.model.Result.Success -> result.data
+            is com.example.usbcam.data.model.Result.Error -> {
+                Log.e("MainViewModel", "verifyCode failed: ${result.message}", result.exception)
+                null
+            }
+            else -> null
+        }
+        
+        if (poResponse != null) {
             // If we found data (either from API or Local), existing Logic suggests we might want to
             // refresh UI
             // repository.saveLocal is already called inside processScan if it came from API.
@@ -112,7 +172,7 @@ class MainViewModel(private val repository: ShoeboxRepository) : ViewModel() {
             loadAllTimeSlots()
             loadTotal()
         }
-        return result
+        return poResponse
     }
 
     fun startSyncWorker(context: Context) {
@@ -223,8 +283,20 @@ class MainViewModelFactory(private val application: Application) : ViewModelProv
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             val database = AppDatabase.getDatabase(application.applicationContext)
             val apiService = PoApiService.create()
-            val repository = ShoeboxRepository(database.shoeboxDao(), apiService)
-            @Suppress("UNCHECKED_CAST") return MainViewModel(repository) as T
+            
+            // Setup repositories
+            val shoeboxRepository = ShoeboxRepository(database.shoeboxDao(), apiService)
+            val rfidRepository = RfidRepository(apiService)
+            
+            // Setup use cases
+            val validateWithRfidUseCase = ValidateWithRfidUseCase(rfidRepository, shoeboxRepository)
+            val processCameraWithRfidUseCase = ProcessCameraWithRfidUseCase(
+                shoeboxRepository,
+                validateWithRfidUseCase
+            )
+            
+            @Suppress("UNCHECKED_CAST") 
+            return MainViewModel(shoeboxRepository, processCameraWithRfidUseCase) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

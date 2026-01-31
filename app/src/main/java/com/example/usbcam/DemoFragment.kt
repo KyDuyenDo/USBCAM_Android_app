@@ -304,6 +304,40 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 rfidViewModel.clearInfo()
             }
         }
+        
+        // 🔹 RFID Validation Result Observer
+        viewModel.validationResult.observe(viewLifecycleOwner) { result ->
+            if (result != null) {
+                when (result) {
+                    is com.example.usbcam.data.model.ValidationResult.Success -> {
+                        if (result.isMatch) {
+                            // Data matched or no RFID validation needed
+                            android.widget.Toast.makeText(
+                                requireContext(), 
+                                result.message, 
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            // Data mismatch - warning
+                            android.widget.Toast.makeText(
+                                requireContext(), 
+                                result.message, 
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    is com.example.usbcam.data.model.ValidationResult.Error -> {
+                        // Validation error
+                        android.widget.Toast.makeText(
+                            requireContext(), 
+                            "❌ ${result.message}", 
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                viewModel.clearValidationResult()
+            }
+        }
     }
 
     private fun reopenCamera() {
@@ -465,7 +499,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         if (data == null) return
         lastFrameTime = System.currentTimeMillis() // Signal detected
 
-        // ✅ OPTIMIZATION 3: Only initialize YUV fallback if needed
+        //OPTIMIZATION 3: Only initialize YUV fallback if needed
         if (frameWidth != width || frameHeight != height) {
             frameWidth = width
             frameHeight = height
@@ -563,7 +597,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         // Grayscale conversion
         Imgproc.cvtColor(mRgba, mGray, Imgproc.COLOR_RGBA2GRAY)
 
-        // ✅ FIX: Create bitmap và đảm bảo cleanup
+        // FIX: Create bitmap và đảm bảo cleanup
         var scanBitmap: Bitmap? = null
         try {
             scanBitmap = createScanBitmap()
@@ -573,7 +607,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         } catch (e: Exception) {
             Log.e(TAG, "Error in processing logic", e)
         } finally {
-            // ✅ CRITICAL: Always recycle bitmap
+            //CRITICAL: Always recycle bitmap
             scanBitmap?.recycle()
         }
 
@@ -581,7 +615,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         updateUI()
     }
 
-    // ✅ OPTIMIZATION 7: Smart brightness boost
+    //OPTIMIZATION 7: Smart brightness boost
     private fun createScanBitmap(): Bitmap? {
         return try {
             val srcMat =
@@ -693,6 +727,20 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     }
                 }
 
+//                if (
+//                    state == AppState.VERIFYING &&
+//                    !isApiCalling &&
+//                    currentApiResponse == null
+//                ) {
+//                    isApiCalling = true // khóa ngay lập tức
+//                    val po = boxProcessor.po
+//                    val barcode = boxProcessor.barcode
+//
+//                    if (!po.isNullOrBlank() && !barcode.isNullOrBlank()) {
+//                        viewModel.handleScan(po, barcode)
+//                    }
+//                }
+
                 if (state == AppState.VERIFYING && !isApiCalling && currentApiResponse == null) {
                     callApi()
                 }
@@ -717,7 +765,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                 if (response.isSuccessful && response.body() != null) {
                                     val body = response.body()!!
                                     currentApiResponse = body
-                                    viewModel.saveScanData(po, barcode, body)
+                                    
+                                    // 🔖 Get scanned RFID code from RfidViewModel
+                                    val scannedRfid = rfidViewModel.lastEpc.value?.takeIf { it.isNotBlank() }
+                                    
+                                    // Pass RFID code to validation logic
+                                    viewModel.saveScanData(po, barcode, body, scannedRfid)
                                     boxProcessor.onApiVerification(true)
                                 } else {
                                     // Fallback: API returned Check for local data

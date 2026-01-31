@@ -109,7 +109,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         _lastRssi.value = rssi
         
         // Automatically fetch RFID information from API with trimmed EPC
-        fetchRfidInfo(trimmedEpc)
+       // fetchRfidInfo(trimmedEpc)
     }
 
     /**

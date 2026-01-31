@@ -39,6 +39,11 @@ interface PoApiService {
             @retrofit2.http.Body total: com.example.usbcam.data.model.ShoeboxTotal
     ): retrofit2.Response<Void>
 
+    @retrofit2.http.POST("api/sync/rfid-mismatch")
+    suspend fun syncRfidMismatch(
+            @retrofit2.http.Body rfidDetail: com.example.usbcam.data.model.ShoeboxDetailRfid
+    ): retrofit2.Response<Void>
+
     companion object {
         private const val BASE_URL = "http://192.168.30.169:3000/"
 

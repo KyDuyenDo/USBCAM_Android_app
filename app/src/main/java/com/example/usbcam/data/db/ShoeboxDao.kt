@@ -42,4 +42,17 @@ interface ShoeboxDao {
     // --- Stats for UI ---
     @Query("SELECT * FROM Data_Shoebox_Detail WHERE DateScan BETWEEN :startTime AND :endTime")
     suspend fun getDetailsInTimeRange(startTime: String, endTime: String): List<ShoeboxDetail>
+
+    // --- RFID Detail Operations ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRfidDetail(rfidDetail: com.example.usbcam.data.model.ShoeboxDetailRfid): Long
+
+    @Query("SELECT * FROM Data_Shoebox_RFID_Detail WHERE Synced = 0")
+    suspend fun getUnsyncedRfidDetails(): List<com.example.usbcam.data.model.ShoeboxDetailRfid>
+
+    @Query("UPDATE Data_Shoebox_RFID_Detail SET Synced = 1 WHERE id = :id")
+    suspend fun updateRfidDetailSynced(id: Long)
+
+    @Query("DELETE FROM Data_Shoebox_RFID_Detail WHERE id = :id")
+    suspend fun deleteRfidDetail(id: Long)
 }
