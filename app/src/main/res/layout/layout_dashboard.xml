@@ -10,14 +10,15 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp"
-        android:animateLayoutChanges="true">
+        android:animateLayoutChanges="true"
+        android:padding="16dp">
 
         <TextView
             android:id="@+id/tv_no_internet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@color/error_red"
+            android:elevation="4dp"
             android:gravity="center"
             android:padding="8dp"
             android:text="Mất kết nối Internet"
@@ -25,14 +26,14 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:visibility="gone"
-            app:layout_constraintTop_toTopOf="parent"
-            android:elevation="4dp"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:id="@+id/tv_camera_error"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@color/orange_warning"
+            android:elevation="4dp"
             android:gravity="center"
             android:padding="8dp"
             android:text="USB Camera signal not detected"
@@ -40,35 +41,34 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:visibility="gone"
-            app:layout_constraintTop_toBottomOf="@id/tv_no_internet"
-            android:elevation="4dp"/>
+            app:layout_constraintTop_toBottomOf="@id/tv_no_internet" />
 
         <!-- Top Section: Stats and Table -->
         <LinearLayout
             android:id="@+id/ll_top"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:orientation="horizontal"
+            android:layout_marginBottom="16dp"
             android:baselineAligned="false"
-            app:layout_constraintTop_toBottomOf="@id/tv_no_internet"
+            android:orientation="horizontal"
             app:layout_constraintHeight_percent="0.55"
-            android:layout_marginBottom="16dp">
+            app:layout_constraintTop_toBottomOf="@id/tv_no_internet">
 
             <!-- Card 1: Production Schedule -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:orientation="vertical"
                 android:background="@drawable/bg_card"
-                android:layout_marginEnd="8dp">
+                android:orientation="vertical">
 
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
                     android:background="@color/primary_blue"
+                    android:orientation="horizontal"
                     android:padding="8dp">
 
                     <TextView
@@ -114,7 +114,7 @@
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:clipToPadding="false"
-                    android:paddingBottom="8dp"/>
+                    android:paddingBottom="8dp" />
 
                 <View
                     android:layout_width="match_parent"
@@ -124,9 +124,9 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="@drawable/bg_table_footer"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:background="@drawable/bg_table_footer"
                     android:padding="16dp">
 
                     <TextView
@@ -166,18 +166,19 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:orientation="vertical"
                 android:background="@drawable/bg_card"
-                android:layout_marginStart="8dp">
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="12dp"
                     android:gravity="center_vertical"
-                    android:orientation="horizontal">
-                     <TextView
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -185,20 +186,21 @@
                         android:textColor="@color/text_primary"
                         android:textSize="18sp"
                         android:textStyle="bold" />
-                    
-                        android:paddingVertical="4dp"/>
+
+                    android:paddingVertical="4dp"/>
+
                     <TextView
                         android:id="@+id/tv_live_badge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="LIVE"
                         android:background="@drawable/bg_status_badge"
                         android:backgroundTint="@color/error_red"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="4dp"
+                        android:text="LIVE"
                         android:textColor="@color/white"
                         android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="4dp"/>
+                        android:textStyle="bold" />
 
                     <com.google.android.material.switchmaterial.SwitchMaterial
                         android:id="@+id/sw_camera"
@@ -206,13 +208,13 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:checked="true"
-                        app:useMaterialThemeColors="true"/>
+                        app:useMaterialThemeColors="true" />
                 </LinearLayout>
-                
+
                 <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/border_color" />
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border_color" />
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
@@ -222,40 +224,40 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="0dp"
                         android:layout_height="0dp"
-                        app:layout_constraintDimensionRatio="4:3"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:cardBackgroundColor="@color/black"
                         app:cardCornerRadius="8dp"
                         app:cardElevation="0dp"
-                        app:cardBackgroundColor="@color/black">
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintDimensionRatio="4:3"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent">
 
                         <com.jiangdg.ausbc.widget.AspectRatioTextureView
                             android:id="@+id/tvCameraRender"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
-                            android:layout_gravity="center"/>
+                            android:layout_gravity="center" />
                     </androidx.cardview.widget.CardView>
 
                     <TextView
                         android:id="@+id/tv_status_ok"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintEnd_toEndOf="parent"
                         android:layout_marginTop="24dp"
                         android:background="@drawable/bg_status_badge"
                         android:backgroundTint="@color/success_green"
+                        android:elevation="4dp"
                         android:paddingHorizontal="24dp"
                         android:paddingVertical="8dp"
                         android:text="OK"
                         android:textColor="@color/white"
                         android:textSize="32sp"
                         android:textStyle="bold"
-                        android:elevation="4dp"
-                        tools:text="SUCCESS"/>
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:text="SUCCESS" />
 
                     <TextView
                         android:id="@+id/tv_countdown"
@@ -263,6 +265,7 @@
                         android:layout_height="wrap_content"
                         android:background="@drawable/bg_status_badge"
                         android:backgroundTint="#80000000"
+                        android:elevation="10dp"
                         android:paddingHorizontal="40dp"
                         android:paddingVertical="20dp"
                         android:text="5"
@@ -270,7 +273,6 @@
                         android:textSize="120sp"
                         android:textStyle="bold"
                         android:visibility="gone"
-                        android:elevation="10dp"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
@@ -286,21 +288,21 @@
             android:id="@+id/ll_middle"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
             android:baselineAligned="false"
-            app:layout_constraintTop_toBottomOf="@id/ll_top"
+            android:orientation="horizontal"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginTop="16dp">
+            app:layout_constraintTop_toBottomOf="@id/ll_top">
 
             <!-- Column 1: Product Info -->
             <LinearLayout
                 android:id="@+id/card_product_info"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_card"
-                android:orientation="vertical"
-                android:layout_marginEnd="8dp">
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -313,46 +315,87 @@
                         android:layout_height="wrap_content"
                         android:text="Product Details"
                         android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="8dp"/>
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:background="@color/border_color"
-                        android:layout_marginBottom="8dp"/>
+                        android:layout_marginBottom="8dp"
+                        android:background="@color/border_color" />
 
                     <!-- Info Rows -->
-                    <LinearLayout
-                        style="@style/InfoRow">
-                        <TextView style="@style/InfoLabel" android:text="Country:" />
-                        <TextView android:id="@+id/tv_country" style="@style/InfoValue" android:text="GERMANY" />
+                    <LinearLayout style="@style/InfoRow">
+
+                        <TextView
+                            style="@style/InfoLabel"
+                            android:text="Country:" />
+
+                        <TextView
+                            android:id="@+id/tv_country"
+                            style="@style/InfoValue"
+                            android:text="GERMANY" />
                     </LinearLayout>
 
                     <LinearLayout style="@style/InfoRow">
-                        <TextView style="@style/InfoLabel" android:text="Art:" />
-                        <TextView android:id="@+id/tv_art" style="@style/InfoValue" android:text="JH9767" />
+
+                        <TextView
+                            style="@style/InfoLabel"
+                            android:text="Art:" />
+
+                        <TextView
+                            android:id="@+id/tv_art"
+                            style="@style/InfoValue"
+                            android:text="JH9767" />
                     </LinearLayout>
 
                     <LinearLayout style="@style/InfoRow">
-                        <TextView style="@style/InfoLabel" android:text="Total Order:" />
-                        <TextView android:id="@+id/tv_total_order" style="@style/InfoValue" android:text="300" />
+
+                        <TextView
+                            style="@style/InfoLabel"
+                            android:text="Total Order:" />
+
+                        <TextView
+                            android:id="@+id/tv_total_order"
+                            style="@style/InfoValue"
+                            android:text="300" />
                     </LinearLayout>
 
                     <LinearLayout style="@style/InfoRow">
-                        <TextView style="@style/InfoLabel" android:text="Completed:" />
-                        <TextView android:id="@+id/tv_completed" style="@style/InfoValue" android:text="0" />
+
+                        <TextView
+                            style="@style/InfoLabel"
+                            android:text="Completed:" />
+
+                        <TextView
+                            android:id="@+id/tv_completed"
+                            style="@style/InfoValue"
+                            android:text="0" />
                     </LinearLayout>
 
                     <LinearLayout style="@style/InfoRow">
-                        <TextView style="@style/InfoLabel" android:text="Remaining:" />
-                        <TextView android:id="@+id/tv_remaining" style="@style/InfoValue" android:text="300" android:textColor="@color/error_red" />
+
+                        <TextView
+                            style="@style/InfoLabel"
+                            android:text="Remaining:" />
+
+                        <TextView
+                            android:id="@+id/tv_remaining"
+                            style="@style/InfoValue"
+                            android:text="300"
+                            android:textColor="@color/error_red" />
                     </LinearLayout>
 
                     <LinearLayout style="@style/InfoRow">
-                        <TextView style="@style/InfoLabel" android:text="Lean:" />
-                        <TextView android:id="@+id/tv_lean" style="@style/InfoValue" android:text="A1_G01" />
+
+                        <TextView
+                            style="@style/InfoLabel"
+                            android:text="Lean:" />
+
+                        <TextView
+                            android:id="@+id/tv_lean"
+                            style="@style/InfoValue"
+                            android:text="A1_G01" />
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
@@ -362,26 +405,27 @@
                 android:id="@+id/card_product_image"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_card"
                 android:orientation="vertical"
-                android:padding="12dp"
-                android:layout_marginEnd="8dp">
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
                     android:text="Product Image"
                     android:textColor="@color/text_primary"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp"/>
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
 
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     app:cardCornerRadius="8dp"
                     app:cardElevation="0dp">
+
                     <ImageView
                         android:id="@+id/iv_shoe_image"
                         android:layout_width="match_parent"
@@ -397,51 +441,89 @@
                 android:id="@+id/card_stats"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_card"
                 android:orientation="vertical"
-                android:padding="12dp"
-                android:layout_marginEnd="8dp">
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Order Stats"
+                    android:text="Box Size Label"
                     android:textColor="@color/text_primary"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp"/>
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/border_color"
-                    android:layout_marginBottom="8dp"/>
+                    android:layout_marginBottom="8dp"
+                    android:background="@color/border_color" />
 
                 <LinearLayout style="@style/InfoRow">
-                    <TextView style="@style/InfoLabel" android:text="RY:" />
-                    <TextView android:id="@+id/tv_ry_value" style="@style/InfoValue" android:text="AH2412-751" />
+
+                    <TextView
+                        style="@style/InfoLabel"
+                        android:text="RY:" />
+
+                    <TextView
+                        android:id="@+id/tv_ry_value"
+                        style="@style/InfoValue"
+                        android:text="AH2412-751" />
                 </LinearLayout>
 
                 <LinearLayout style="@style/InfoRow">
-                    <TextView style="@style/InfoLabel" android:text="Qty:" />
-                    <TextView android:id="@+id/tv_qty_value" style="@style/InfoValue" android:text="12" />
+
+                    <TextView
+                        style="@style/InfoLabel"
+                        android:text="Qty:" />
+
+                    <TextView
+                        android:id="@+id/tv_qty_value"
+                        style="@style/InfoValue"
+                        android:text="12" />
                 </LinearLayout>
 
                 <LinearLayout style="@style/InfoRow">
-                    <TextView style="@style/InfoLabel" android:text="Size:" />
-                    <TextView android:id="@+id/tv_size_value" style="@style/InfoValue" android:text="08" />
+
+                    <TextView
+                        style="@style/InfoLabel"
+                        android:text="Size:" />
+
+                    <TextView
+                        android:id="@+id/tv_size_value"
+                        style="@style/InfoValue"
+                        android:text="08" />
                 </LinearLayout>
 
 
                 <LinearLayout style="@style/InfoRow">
-                    <TextView style="@style/InfoLabel" android:text="PO No:" />
-                    <TextView android:id="@+id/tv_po_value" style="@style/InfoValue" android:text="0900005032" android:ellipsize="end" android:maxLines="1"/>
+
+                    <TextView
+                        style="@style/InfoLabel"
+                        android:text="PO No:" />
+
+                    <TextView
+                        android:id="@+id/tv_po_value"
+                        style="@style/InfoValue"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="0900005032" />
                 </LinearLayout>
 
                 <LinearLayout style="@style/InfoRow">
-                    <TextView style="@style/InfoLabel" android:text="UPC:" />
-                    <TextView android:id="@+id/tv_upc_value" style="@style/InfoValue" android:text="4067898529187" android:ellipsize="end" android:maxLines="1" />
+
+                    <TextView
+                        style="@style/InfoLabel"
+                        android:text="UPC:" />
+
+                    <TextView
+                        android:id="@+id/tv_upc_value"
+                        style="@style/InfoValue"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="4067898529187" />
                 </LinearLayout>
 
                 <TextView
@@ -451,15 +533,15 @@
                     android:layout_marginTop="8dp"
                     android:text="Last Scan: --"
                     android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:textSize="14sp" />
 
                 <ProgressBar
                     android:id="@+id/pbMotion"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:layout_marginTop="4dp" />
+                    android:layout_marginTop="4dp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <!-- Column 4: RFID Display Area -->
@@ -475,8 +557,8 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
                     android:gravity="center_vertical"
+                    android:orientation="horizontal"
                     android:padding="3dp"
                     android:paddingBottom="8dp">
 
@@ -484,35 +566,34 @@
                         android:id="@+id/iv_rfid_icon"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
+                        android:layout_marginEnd="8dp"
                         android:src="@drawable/ic_rfid_card"
-                        app:tint="@color/primary_blue"
-                        android:layout_marginEnd="8dp"/>
+                        app:tint="@color/primary_blue" />
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="RFID Scanner"
+                        android:text="RFID Hangtag"
                         android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold"/>
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
 
                     <!-- Settings Icon Button -->
                     <ImageView
                         android:id="@+id/btn_usb_rfid"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
-                        android:src="@android:drawable/ic_menu_manage"
-                        app:tint="@color/primary_blue"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:padding="3dp"/>
+                        android:padding="3dp"
+                        android:src="@android:drawable/ic_menu_manage"
+                        app:tint="@color/primary_blue" />
                 </LinearLayout>
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
-                    android:background="@color/border_color"
-                    android:layout_marginBottom="8dp"/>
+                    android:background="@color/border_color" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -526,123 +607,66 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:orientation="vertical"
-                        android:padding="8dp"
-                        >
+                        android:padding="8dp">
 
-                        <!-- Model -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp">
+                        <LinearLayout style="@style/InfoRow">
+
                             <TextView
-                                android:layout_width="60dp"
-                                android:layout_height="wrap_content"
-                                android:text="Model:"
-                                android:textSize="12sp"
-                                android:textColor="@color/text_secondary"/>
+                                style="@style/InfoLabel"
+                                android:text="Model:" />
+
                             <TextView
                                 android:id="@+id/tv_rfid_model"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="---"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"/>
+                                style="@style/InfoValue"
+                                android:text="---" />
                         </LinearLayout>
 
-                        <!-- Article -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp">
+                        <LinearLayout style="@style/InfoRow">
+
                             <TextView
-                                android:layout_width="60dp"
-                                android:layout_height="wrap_content"
-                                android:text="Article:"
-                                android:textSize="12sp"
-                                android:textColor="@color/text_secondary"/>
+                                style="@style/InfoLabel"
+                                android:text="Article:" />
+
                             <TextView
                                 android:id="@+id/tv_rfid_article"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="---"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"/>
+                                style="@style/InfoValue"
+                                android:text="---" />
                         </LinearLayout>
 
-                        <!-- Size -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp"
-                            >
+                        <LinearLayout style="@style/InfoRow">
+
                             <TextView
-                                android:layout_width="60dp"
-                                android:layout_height="wrap_content"
-                                android:text="Size:"
-                                android:textSize="12sp"
-                                android:textColor="@color/text_secondary"/>
+                                style="@style/InfoLabel"
+                                android:text="Size:" />
+
                             <TextView
                                 android:id="@+id/tv_rfid_size"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="---"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"/>
+                                style="@style/InfoValue"
+                                android:text="---" />
                         </LinearLayout>
 
-                        <!-- PO -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp">
+                        <LinearLayout style="@style/InfoRow">
+
                             <TextView
-                                android:layout_width="60dp"
-                                android:layout_height="wrap_content"
-                                android:text="PO:"
-                                android:textSize="12sp"
-                                android:textColor="@color/text_secondary"/>
+                                style="@style/InfoLabel"
+                                android:text="PO:" />
+
                             <TextView
                                 android:id="@+id/tv_rfid_po"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="---"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"/>
+                                style="@style/InfoValue"
+                                android:text="---" />
                         </LinearLayout>
 
-                        <!-- UPC -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginBottom="12dp">
+                        <LinearLayout style="@style/InfoRow">
+
                             <TextView
-                                android:layout_width="60dp"
-                                android:layout_height="wrap_content"
-                                android:text="UPC:"
-                                android:textSize="12sp"
-                                android:textColor="@color/text_secondary"/>
+                                style="@style/InfoLabel"
+                                android:text="UPC:" />
+
                             <TextView
                                 android:id="@+id/tv_rfid_upc"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="---"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"/>
+                                style="@style/InfoValue"
+                                android:text="---" />
                         </LinearLayout>
 
 
@@ -651,10 +675,10 @@
                             android:id="@+id/tv_rfid_status"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:layout_marginBottom="6dp"
                             android:text="• Not Connected"
                             android:textColor="@color/text_secondary"
-                            android:textSize="11sp"
-                            android:layout_marginBottom="12dp"/>
+                            android:textSize="13sp" />
 
                     </LinearLayout>
 
@@ -662,7 +686,7 @@
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="8dp">
 
                         <TextView
                             android:id="@+id/tv_epc_label"
@@ -670,26 +694,26 @@
                             android:layout_height="wrap_content"
                             android:text="EPC CODE"
                             android:textColor="@color/text_secondary"
-                            android:textSize="10sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
+                            app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
-                            app:layout_constraintTop_toTopOf="parent"
-                            app:layout_constraintBottom_toBottomOf="parent"/>
+                            app:layout_constraintTop_toTopOf="parent" />
 
                         <TextView
                             android:id="@+id/tv_dashboard_last_rfid"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:fontFamily="monospace"
                             android:text="---"
                             android:textColor="@color/primary_blue"
-                            android:textSize="12sp"
+                            android:textSize="14sp"
                             android:textStyle="bold"
-                            android:fontFamily="monospace"
-                            app:layout_constraintStart_toEndOf="@id/tv_epc_label"
+                            app:layout_constraintBottom_toBottomOf="@id/tv_epc_label"
                             app:layout_constraintEnd_toEndOf="parent"
-                            app:layout_constraintTop_toTopOf="@id/tv_epc_label"
-                            app:layout_constraintBottom_toBottomOf="@id/tv_epc_label"/>
+                            app:layout_constraintStart_toEndOf="@id/tv_epc_label"
+                            app:layout_constraintTop_toTopOf="@id/tv_epc_label" />
 
                     </androidx.constraintlayout.widget.ConstraintLayout>
 

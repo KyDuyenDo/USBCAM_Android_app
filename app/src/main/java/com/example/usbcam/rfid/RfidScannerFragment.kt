@@ -99,7 +99,7 @@ class RfidScannerFragment : DialogFragment() {
             override fun onAutoConnectFailed() {
                 activity?.runOnUiThread {
                     // Auto-open settings if connection failed
-                    openSettings()
+                    // openSettings()
                 }
             }
         })

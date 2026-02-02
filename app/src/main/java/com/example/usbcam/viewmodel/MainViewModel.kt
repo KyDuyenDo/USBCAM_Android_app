@@ -180,7 +180,7 @@ class MainViewModel(
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         val syncRequest =
-                PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.MINUTES)
+                PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
                         .setConstraints(constraints)
                         .build()
 

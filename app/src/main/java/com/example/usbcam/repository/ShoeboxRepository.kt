@@ -153,6 +153,18 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                 e.printStackTrace()
             }
         }
+
+        val unsyncedRfid = dao.getUnsyncedRfidDetails()
+        unsyncedRfid.forEach { rfid ->
+            try {
+                val response = apiService.syncRfidMismatch(rfid)
+                if (response.isSuccessful) {
+                    dao.updateRfidDetailSynced(rfid.id)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
     suspend fun getAllSlotsToday(target: Int): List<TimeSlotItem> {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())

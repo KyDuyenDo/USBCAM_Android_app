@@ -49,7 +49,7 @@ class ValidateWithRfidUseCase(
                     when (comparisonResult) {
                         is ComparisonResult.Match -> {
                             // MATCH → Save to main table
-                            Log.i(TAG, "✅ Data matches! Saving to main table")
+                            Log.i(TAG, "Data matches! Saving to main table")
                             shoeboxRepository.saveToMainTable(cameraData, rfidData)
                             
                             ValidationResult.Success(
@@ -59,7 +59,7 @@ class ValidateWithRfidUseCase(
                         }
                         is ComparisonResult.Mismatch -> {
                             // MISMATCH → Save to RFID detail table
-                            Log.w(TAG, "⚠️ Data mismatch for $rfidCode! Details: ${comparisonResult.details}")
+                            Log.w(TAG, "Data mismatch for $rfidCode! Details: ${comparisonResult.details}")
                             shoeboxRepository.saveToMismatchTable(
                                 cameraData = cameraData,
                                 rfidData = rfidData,

@@ -127,7 +127,7 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         
         // FIX: Automatically fetch RFID information from API with trimmed EPC
         // This ensures the UI shows product info (Model, Article, etc.) as soon as scanned
-        fetchRfidInfo(trimmedEpc)
+       // fetchRfidInfo(trimmedEpc)
     }
 
     /**

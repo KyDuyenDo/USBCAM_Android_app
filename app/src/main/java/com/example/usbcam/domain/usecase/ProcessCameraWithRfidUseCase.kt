@@ -53,10 +53,10 @@ class ProcessCameraWithRfidUseCase(
                 
                 // Bỏ qua bước so sánh, lưu dữ liệu bình thường
                 shoeboxRepository.saveToMainTable(cameraData, rfidData = null)
-                
+
                 return@withContext ValidationResult.Success(
                     isMatch = true,  // Considered "match" since no validation needed
-                    message = "✅ Data saved successfully (no RFID scanned)"
+                    message = "Data saved successfully (no RFID scanned)"
                 )
             }
             
