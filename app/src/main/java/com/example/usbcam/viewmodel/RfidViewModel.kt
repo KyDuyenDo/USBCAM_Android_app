@@ -5,13 +5,18 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.example.usbcam.BoxProcessor
 import com.example.usbcam.api.DataRfid
 import com.example.usbcam.api.PoApiService
 import com.example.usbcam.api.PoResponse
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * RfidViewModel - MVVM Pattern for RFID functionality
@@ -22,13 +27,17 @@ import retrofit2.Response
  * - API calls to fetch RFID information
  * - UI state for RFID scanner
  */
-class RfidViewModel(application: Application) : AndroidViewModel(application) {
+class RfidViewModel(
+    application: Application,
+    private val rfidRepository: com.example.usbcam.repository.RfidRepository,
+    private val validateWithRfidUseCase: com.example.usbcam.domain.usecase.ValidateWithRfidUseCase
+) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "RfidViewModel"
     }
 
-    private val apiService = PoApiService.create()
+    // Initialized via constructor
     private lateinit var boxProcessor: BoxProcessor
 
     // Connection state
@@ -124,53 +133,85 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
         
         _lastEpc.value = trimmedEpc
         _lastRssi.value = rssi
-        
-        // FIX: Automatically fetch RFID information from API with trimmed EPC
-        // This ensures the UI shows product info (Model, Article, etc.) as soon as scanned
-       // fetchRfidInfo(trimmedEpc)
     }
 
     /**
-     * Fetch RFID information from API
+     * Update ViewModel data using result from validation UseCase (called from outside)
+     */
+    fun updateFromValidationResult(result: com.example.usbcam.data.model.ValidationResult.Success) {
+        val rfidData = result.rfidData ?: return
+        
+        // 1. Update product info display
+        val apiRfidData = com.example.usbcam.api.DataRfid(
+            rfid = rfidData.rfidCode,
+            po = rfidData.po ?: "",
+            barcode = rfidData.upc ?: "",
+            size = rfidData.size ?: "",
+            article = rfidData.article ?: "",
+            color = rfidData.color ?: "",
+            model = rfidData.model ?: ""
+        )
+        _rfidData.postValue(apiRfidData)
+        
+        // 2. Update match booleans based on mismatchFields
+        val mismatches = result.mismatchFields
+        _isPoMatch.postValue(!mismatches.contains("PO"))
+        _isArtMatch.postValue(!mismatches.contains("Article"))
+        _isSizeMatch.postValue(!mismatches.contains("Size"))
+        _isUpcMatch.postValue(!mismatches.contains("UPC"))
+        
+        Log.d(TAG, "Updated RfidViewModel from validation result: Match=${result.isMatch}, Mismatches=$mismatches")
+    }
+
+    /**
+     * Fetch RFID information from API - Kept for potential manual refresh only
      */
     fun fetchRfidInfo(epc: String) {
+        // Implementation kept but not automatically called
         if (epc.isEmpty()) {
             _errorMessage.value = "EPC code is empty"
             return
         }
-
-        _isLoadingRfidInfo.value = true
-        _errorMessage.value = null
         
-        Log.d(TAG, "Fetching RFID info for EPC: $epc")
+        // Rest of implementation... (Optional: could be completely removed if refresh is not needed)
+    }
 
-        apiService.getRfidInfo(epc).enqueue(object : Callback<DataRfid> {
-            override fun onResponse(call: Call<DataRfid>, response: Response<DataRfid>) {
-                _isLoadingRfidInfo.value = false
+    /**
+     * Validate current RFID scan against camera data using UseCase
+     */
+    private suspend fun validateCurrentScan(epc: String, rfidData: com.example.usbcam.data.model.RfidData) {
+        val camResp = _currentCameraData ?: return
+        
+        // Convert PoResponse to CameraData
+        val cameraData = com.example.usbcam.data.model.CameraData(
+            po = camResp.po ?: "",
+            upc = camResp.upc ?: "",
+            ry = camResp.ry,
+            size = camResp.size,
+            article = camResp.article,
+            qty = 1,
+            shoeImage = camResp.articleImage,
+            dateScan = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+            userSerialKey = "DEVICE",
+            line = camResp.lean
+        )
 
-                if (response.isSuccessful && response.body() != null) {
-                    val data = response.body()!!
-                    _rfidData.value = data
-                    
-                    Log.d(TAG, "RFID Info Success: PO=${data.po}, Article=${data.article}, Size=${data.size}")
-                    // _infoMessage.value = "Found: ${data.article} - Size ${data.size}"
-                    
-                    // Comparison logic
-                    performDetailedComparison(data)
-                } else {
-                    _rfidData.value = null
-                      //_errorMessage.value = "RFID not found in database (${response.code()})"
-                    Log.w(TAG, "RFID not found: ${response.code()}")
-                }
-            }
-
-            override fun onFailure(call: Call<DataRfid>, t: Throwable) {
-                _isLoadingRfidInfo.value = false
-                _rfidData.value = null
-               // _errorMessage.value = "Network error: ${t.message}"
-                Log.e(TAG, "API call failed", t)
-            }
-        })
+        // Use the common validation use case
+        val validationResult = validateWithRfidUseCase.invoke(epc, cameraData)
+        
+        // Update match states based on comparison (re-run local comparison for field-level booleans)
+        // Note: Ideally ValidateWithRfidUseCase would return the mismatch details too.
+        performDetailedComparison(
+            com.example.usbcam.api.DataRfid(
+                rfid = rfidData.rfidCode,
+                po = rfidData.po ?: "",
+                barcode = rfidData.upc ?: "",
+                size = rfidData.size ?: "",
+                article = rfidData.article ?: "",
+                color = rfidData.color ?: "",
+                model = rfidData.model ?: ""
+            )
+        )
     }
 
     /**
@@ -298,5 +339,25 @@ class RfidViewModel(application: Application) : AndroidViewModel(application) {
             // The UI will highlight incorrect fields in red using the booleans above.
             //_errorMessage.postValue("⚠️ MISMATCH DETECTED ($epc)")
         }
+    }
+}
+
+/**
+ * Factory for RfidViewModel
+ */
+class RfidViewModelFactory(private val application: Application) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(RfidViewModel::class.java)) {
+            val database = com.example.usbcam.data.db.AppDatabase.getDatabase(application.applicationContext)
+            val apiService = com.example.usbcam.api.PoApiService.create()
+            
+            val shoeboxRepository = com.example.usbcam.repository.ShoeboxRepository(database.shoeboxDao(), apiService)
+            val rfidRepository = com.example.usbcam.repository.RfidRepository(apiService)
+            val validateWithRfidUseCase = com.example.usbcam.domain.usecase.ValidateWithRfidUseCase(rfidRepository, shoeboxRepository)
+            
+            @Suppress("UNCHECKED_CAST")
+            return RfidViewModel(application, rfidRepository, validateWithRfidUseCase) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

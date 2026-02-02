@@ -55,7 +55,12 @@ sealed class ComparisonResult {
  * Validation result
  */
 sealed class ValidationResult {
-    data class Success(val isMatch: Boolean, val message: String) : ValidationResult()
+    data class Success(
+        val isMatch: Boolean, 
+        val message: String,
+        val rfidData: RfidData? = null,
+        val mismatchFields: List<String> = emptyList()
+    ) : ValidationResult()
     data class Error(val message: String, val exception: Exception? = null) : ValidationResult()
 }
 

@@ -39,7 +39,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         MainViewModelFactory(requireActivity().application)
     }
 
-    private val rfidViewModel: com.example.usbcam.viewmodel.RfidViewModel by viewModels()
+    private val rfidViewModel: com.example.usbcam.viewmodel.RfidViewModel by viewModels {
+        com.example.usbcam.viewmodel.RfidViewModelFactory(requireActivity().application)
+    }
 
     private var mViewBinding: LayoutDashboardBinding? = null
     private lateinit var boxProcessor: BoxProcessor
@@ -323,8 +325,11 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                             
+                            // 🔹 Sync RfidViewModel UI with the fetched data
+                            rfidViewModel.updateFromValidationResult(result)
+                            
                             // 🔹 Reset RFID after successful save 
-                            rfidViewModel.clearRfidData()
+                            // rfidViewModel.clearRfidData() 
                         } else {
                             // Data mismatch - warning
                             android.widget.Toast.makeText(
@@ -332,6 +337,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                 result.message, 
                                 android.widget.Toast.LENGTH_LONG
                             ).show()
+                            
+                            // 🔹 Sync RfidViewModel UI with the mismatch data/fields
+                            rfidViewModel.updateFromValidationResult(result)
                         }
                     }
                     is com.example.usbcam.data.model.ValidationResult.Error -> {

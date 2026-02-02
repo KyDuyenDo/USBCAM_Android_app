@@ -46,7 +46,7 @@ class MainViewModel(
     private val _scanResult = MutableLiveData<PoResponse?>()
     val scanResult: LiveData<PoResponse?> = _scanResult
 
-    private val _isCameraEnabled = MutableLiveData<Boolean>(false)
+    private val _isCameraEnabled = MutableLiveData<Boolean>(true)
     val isCameraEnabled: LiveData<Boolean> = _isCameraEnabled
 
     private val _cameraSignalError = MutableLiveData<String?>(null)

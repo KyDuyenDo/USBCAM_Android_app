@@ -31,7 +31,9 @@ class RfidScannerFragment : DialogFragment() {
     private var _binding: FragmentRfidScannerBinding? = null
     private val binding get() = _binding!!
     
-    private val rfidViewModel: RfidViewModel by viewModels()
+    private val rfidViewModel: RfidViewModel by viewModels {
+        com.example.usbcam.viewmodel.RfidViewModelFactory(requireActivity().application)
+    }
     private lateinit var connectionManager: RfidConnectionManager
     
     override fun onStart() {

@@ -54,7 +54,8 @@ class ValidateWithRfidUseCase(
                             
                             ValidationResult.Success(
                                 isMatch = true,
-                                message = "✅ RFID Match ($rfidCode) - Data saved successfully"
+                                message = "✅ RFID Match ($rfidCode) - Data saved successfully",
+                                rfidData = rfidData
                             )
                         }
                         is ComparisonResult.Mismatch -> {
@@ -72,7 +73,9 @@ class ValidateWithRfidUseCase(
                             
                             ValidationResult.Success(
                                 isMatch = false,
-                                message = "⚠️ RFID Mismatch ($rfidCode)\n$mismatchInfo"
+                                message = "⚠️ RFID Mismatch ($rfidCode)\n$mismatchInfo",
+                                rfidData = rfidData,
+                                mismatchFields = comparisonResult.details.map { it.field }
                             )
                         }
                     }
