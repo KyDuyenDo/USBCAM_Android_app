@@ -93,15 +93,35 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
     }
 
     private suspend fun updateTotal(po: String, upc: String, data: PoResponse, lineOverride: String? = null) {
+        updateTotal(
+            po = po,
+            upc = upc,
+            ry = data.ry,
+            size = data.size,
+            article = data.article,
+            erpTarget = data.quantity ?: 0,
+            lineOverride = lineOverride ?: data.lean
+        )
+    }
+
+    private suspend fun updateTotal(
+        po: String,
+        upc: String,
+        ry: String?,
+        size: String?,
+        article: String?,
+        erpTarget: Int,
+        lineOverride: String? = null
+    ) {
         val details = dao.getDetailsByUpc(upc).filter { it.PO == po }
         val totalQty = details.sumOf { it.Qty }
-        val lineToSave = lineOverride ?: data.lean
+        val lineToSave = lineOverride
 
         val currentTotal = dao.getTotalByUpcAndPo(upc, po)
         val newTotal =
                 if (currentTotal != null) {
                     currentTotal.copy(
-                            Total_Qty_ERP = data.quantity ?: 0,
+                            Total_Qty_ERP = erpTarget,
                             Total_Qty_Scan = totalQty,
                             Modify = getCurrentTime(),
                             Line = lineToSave,
@@ -109,13 +129,13 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                     )
                 } else {
                     ShoeboxTotal(
-                            RY = data.ry,
-                            Size = data.size,
+                            RY = ry,
+                            Size = size,
                             PO = po,
                             UPC = upc,
                             Total_Qty_Scan = totalQty,
-                            Total_Qty_ERP = data.quantity ?: 0,
-                            Article = data.article,
+                            Total_Qty_ERP = erpTarget,
+                            Article = article,
                             DateScan = getCurrentTime(),
                             Modify = getCurrentTime(),
                             User_Serial_Key = "DEVICE",
@@ -316,10 +336,11 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
     suspend fun saveToMainTable(
         cameraData: com.example.usbcam.data.model.CameraData,
         rfidData: com.example.usbcam.data.model.RfidData? = null,
-        selectedLine: String? = null
+        selectedLine: String? = null,
+        erpTarget: Int = 0
     ) {
         try {
-            Log.d("ShoeboxRepo", "Saving to main table: ${cameraData.po}")
+            Log.d("ShoeboxRepo", "Saving to main table: ${cameraData.po}, line=$selectedLine")
             
             val detail = ShoeboxDetail(
                 RY = cameraData.ry,
@@ -338,8 +359,18 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
             
             dao.insertDetail(detail)
 
-            //updateTotal(cameraData.po, cameraData.upc, cameraData, selectedLine)
-            Log.i("ShoeboxRepo", "Saved to main table")
+            // Update Total
+            updateTotal(
+                po = cameraData.po,
+                upc = cameraData.upc,
+                ry = cameraData.ry,
+                size = cameraData.size,
+                article = cameraData.article,
+                erpTarget = erpTarget,
+                lineOverride = selectedLine
+            )
+            
+            Log.i("ShoeboxRepo", "Saved to main table and updated total")
         } catch (e: Exception) {
             Log.e("ShoeboxRepo", "Failed to save to main table", e)
             throw e

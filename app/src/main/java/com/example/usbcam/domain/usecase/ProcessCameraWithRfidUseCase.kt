@@ -53,7 +53,7 @@ class ProcessCameraWithRfidUseCase(
                 Log.d(TAG, "📦 No RFID scanned → Saving normally to main table")
                 
                 // Bỏ qua bước so sánh, lưu dữ liệu bình thường
-                shoeboxRepository.saveToMainTable(cameraData, rfidData = null, selectedLine)
+                shoeboxRepository.saveToMainTable(cameraData, rfidData = null, selectedLine, erpTarget = apiResponse.quantity ?: 0)
 
                 return@withContext ValidationResult.Success(
                     isMatch = true,  // Considered "match" since no validation needed
@@ -65,7 +65,12 @@ class ProcessCameraWithRfidUseCase(
             Log.d(TAG, "RFID scanned: $scannedRfidCode → Starting validation process...")
             
             // Thực hiện truy xuất dữ liệu RFID từ API và so sánh tự động
-            val validationResult = validateWithRfidUseCase.invoke(scannedRfidCode, cameraData)
+            val validationResult = validateWithRfidUseCase.invoke(
+                rfidCode = scannedRfidCode, 
+                cameraData = cameraData, 
+                selectedLine = selectedLine,
+                erpTarget = apiResponse.quantity ?: 0
+            )
             
             when (validationResult) {
                 is ValidationResult.Success -> {
