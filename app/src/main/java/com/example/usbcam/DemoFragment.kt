@@ -247,8 +247,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     // Requirement 6: Mở màn hình chọn thiết bị khi kết nối thất bại
                     Log.w(TAG, "Auto-connect failed. Opening selection UI.")
                     if (isAdded && !isSignalLostDialogShowing) {
-                        val settingsDialog = com.example.usbcam.rfid.RfidSettingsFragment.newInstance()
-                        settingsDialog.show(parentFragmentManager, "RfidSettingsDialog")
+                        //val settingsDialog = com.example.usbcam.rfid.RfidSettingsFragment.newInstance()
+                        //settingsDialog.sehow(parentFragmentManager, "RfidSettingsDialog")
                     }
                 }
             }

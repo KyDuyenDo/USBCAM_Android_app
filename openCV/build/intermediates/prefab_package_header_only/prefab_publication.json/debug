@@ -1,5 +1,5 @@
 {
-  "installationFolder": "D:\\Count\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\build\\intermediates\\prefab_package\\debug\\prefab",
+  "installationFolder": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\build\\intermediates\\prefab_package\\debug\\prefab",
   "gradlePath": ":openCV",
   "packageInfo": {
     "packageName": "openCV",
@@ -8,7 +8,7 @@
     "modules": [
       {
         "moduleName": "opencv_jni_shared",
-        "moduleHeaders": "D:\\Count\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\native\\jni\\include",
+        "moduleHeaders": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\native\\jni\\include",
         "moduleExportLibraries": [],
         "abis": []
       }

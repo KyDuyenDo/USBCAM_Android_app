@@ -69,7 +69,7 @@
                     android:layout_height="wrap_content"
                     android:background="@color/primary_blue"
                     android:orientation="horizontal"
-                    android:padding="8dp">
+                    android:padding="5dp">
 
                     <TextView
                         android:layout_width="0dp"
@@ -77,6 +77,7 @@
                         android:layout_weight="1"
                         android:gravity="center"
                         android:text="STT"
+                        android:textSize="20sp"
                         android:textColor="@color/white"
                         android:textStyle="bold" />
 
@@ -87,6 +88,7 @@
                         android:gravity="center"
                         android:text="Khung giờ"
                         android:textColor="@color/white"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -96,6 +98,7 @@
                         android:gravity="center"
                         android:text="Mục tiêu"
                         android:textColor="@color/white"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
 
                     <TextView
@@ -104,6 +107,7 @@
                         android:layout_weight="2"
                         android:gravity="center"
                         android:text="Sản lượng"
+                        android:textSize="20sp"
                         android:textColor="@color/white"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -176,7 +180,7 @@
                     android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:padding="12dp">
+                    android:padding="1dp">
 
                     <TextView
                         android:layout_width="0dp"
@@ -184,10 +188,9 @@
                         android:layout_weight="1"
                         android:text="Live Camera Feed"
                         android:textColor="@color/text_primary"
-                        android:textSize="18sp"
+                        android:paddingLeft="14dp"
+                        android:textSize="20dp"
                         android:textStyle="bold" />
-
-                    android:paddingVertical="4dp"/>
 
                     <TextView
                         android:id="@+id/tv_live_badge"
@@ -208,6 +211,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:checked="true"
+                        android:paddingRight="12dp"
                         app:useMaterialThemeColors="true" />
                 </LinearLayout>
 
@@ -222,7 +226,7 @@
                     android:padding="16dp">
 
                     <androidx.cardview.widget.CardView
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="0dp"
                         app:cardBackgroundColor="@color/black"
                         app:cardCornerRadius="8dp"
@@ -337,17 +341,6 @@
                             android:text="GERMANY" />
                     </LinearLayout>
 
-                    <LinearLayout style="@style/InfoRow">
-
-                        <TextView
-                            style="@style/InfoLabel"
-                            android:text="Art:" />
-
-                        <TextView
-                            android:id="@+id/tv_art"
-                            style="@style/InfoValue"
-                            android:text="JH9767" />
-                    </LinearLayout>
 
                     <LinearLayout style="@style/InfoRow">
 
@@ -477,13 +470,14 @@
 
                     <TextView
                         style="@style/InfoLabel"
-                        android:text="Qty:" />
+                        android:text="Article:" />
 
                     <TextView
-                        android:id="@+id/tv_qty_value"
+                        android:id="@+id/tv_art"
                         style="@style/InfoValue"
-                        android:text="12" />
+                        android:text="JH9767" />
                 </LinearLayout>
+
 
                 <LinearLayout style="@style/InfoRow">
 
@@ -524,6 +518,19 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="4067898529187" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/InfoRow">
+
+                    <TextView
+                        style="@style/InfoLabel"
+                        android:text="Qty:" />
+
+                    <TextView
+                        android:id="@+id/tv_qty_value"
+                        style="@style/InfoValue"
+                        android:text="12"
+                        android:textSize="24dp"/>
                 </LinearLayout>
 
                 <TextView
@@ -649,7 +656,7 @@
 
                             <TextView
                                 style="@style/InfoLabel"
-                                android:text="PO:" />
+                                android:text="PO No:" />
 
                             <TextView
                                 android:id="@+id/tv_rfid_po"
