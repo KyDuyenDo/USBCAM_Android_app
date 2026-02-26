@@ -30,7 +30,8 @@ class ValidateWithRfidUseCase(
 
     suspend operator fun invoke(
         rfidCode: String,
-        cameraData: CameraData
+        cameraData: CameraData,
+        selectedLine: String? = null
     ): ValidationResult = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Starting validation for RFID: $rfidCode")
@@ -50,7 +51,7 @@ class ValidateWithRfidUseCase(
                         is ComparisonResult.Match -> {
                             // MATCH → Save to main table
                             Log.i(TAG, "Data matches! Saving to main table")
-                            shoeboxRepository.saveToMainTable(cameraData, rfidData)
+                            shoeboxRepository.saveToMainTable(cameraData, rfidData, selectedLine)
                             
                             ValidationResult.Success(
                                 isMatch = true,
@@ -64,7 +65,8 @@ class ValidateWithRfidUseCase(
                             shoeboxRepository.saveToMismatchTable(
                                 cameraData = cameraData,
                                 rfidData = rfidData,
-                                mismatchFields = comparisonResult.details.map { it.field }
+                                mismatchFields = comparisonResult.details.map { it.field },
+                                selectedLine = selectedLine
                             )
                             
                             val mismatchInfo = comparisonResult.details.joinToString("\n") { 

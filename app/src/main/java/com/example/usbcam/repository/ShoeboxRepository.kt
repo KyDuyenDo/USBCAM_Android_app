@@ -315,7 +315,8 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
      */
     suspend fun saveToMainTable(
         cameraData: com.example.usbcam.data.model.CameraData,
-        rfidData: com.example.usbcam.data.model.RfidData? = null
+        rfidData: com.example.usbcam.data.model.RfidData? = null,
+        selectedLine: String? = null
     ) {
         try {
             Log.d("ShoeboxRepo", "Saving to main table: ${cameraData.po}")
@@ -331,11 +332,13 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                 Article = cameraData.article,
                 ShoeImage = cameraData.shoeImage,
                 User_Serial_Key = cameraData.userSerialKey ?: "DEVICE",
-                Line = cameraData.line,
+                Line = selectedLine,
                 Synced = 0
             )
             
             dao.insertDetail(detail)
+
+            //updateTotal(cameraData.po, cameraData.upc, cameraData, selectedLine)
             Log.i("ShoeboxRepo", "Saved to main table")
         } catch (e: Exception) {
             Log.e("ShoeboxRepo", "Failed to save to main table", e)
@@ -349,7 +352,8 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
     suspend fun saveToMismatchTable(
         cameraData: com.example.usbcam.data.model.CameraData,
         rfidData: com.example.usbcam.data.model.RfidData,
-        mismatchFields: List<String>
+        mismatchFields: List<String>,
+        selectedLine: String? = null
     ) {
         try {
             Log.w("ShoeboxRepo", "Saving mismatch: ${cameraData.po}, Fields=$mismatchFields")
@@ -376,7 +380,7 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                 Modify = getCurrentTime(),
                 ShoeImage = cameraData.shoeImage,
                 User_Serial_Key = cameraData.userSerialKey ?: "DEVICE",
-                Line = cameraData.line,
+                Line = selectedLine,
                 Synced = 0
             )
             

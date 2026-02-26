@@ -133,10 +133,11 @@ class MainViewModel(
 
     fun saveScanData(po: String, barcode: String, data: PoResponse, scannedRfidCode: String? = null) {
         Log.d("saveScanData", "API Success: $data, RFID: $scannedRfidCode")
+        val selectedLine = _selectedLine.value
         viewModelScope.launch {
             try {
                 // 🔹 NEW LOGIC: Check for scanned RFID code (from RFID scanner)
-                val result = processCameraWithRfidUseCase.invoke(po, barcode, data, scannedRfidCode)
+                val result = processCameraWithRfidUseCase.invoke(po, barcode, data, scannedRfidCode, selectedLine)
                 
                 // Post result for UI observation
                 _validationResult.postValue(result)

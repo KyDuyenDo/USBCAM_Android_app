@@ -40,7 +40,8 @@ class ProcessCameraWithRfidUseCase(
         po: String,
         barcode: String,
         apiResponse: PoResponse,
-        scannedRfidCode: String? = null
+        scannedRfidCode: String? = null,
+        selectedLine: String? = null
     ): ValidationResult = withContext(Dispatchers.IO) {
         try {
             // Convert API response to camera data model
@@ -52,7 +53,7 @@ class ProcessCameraWithRfidUseCase(
                 Log.d(TAG, "📦 No RFID scanned → Saving normally to main table")
                 
                 // Bỏ qua bước so sánh, lưu dữ liệu bình thường
-                shoeboxRepository.saveToMainTable(cameraData, rfidData = null)
+                shoeboxRepository.saveToMainTable(cameraData, rfidData = null, selectedLine)
 
                 return@withContext ValidationResult.Success(
                     isMatch = true,  // Considered "match" since no validation needed
