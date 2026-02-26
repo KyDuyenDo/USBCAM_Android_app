@@ -16,16 +16,16 @@ import java.util.Locale
 class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoApiService) {
 
     // Used when logic is fully delegated to Repository (API + DB)
-    suspend fun processScan(po: String, barcode: String): com.example.usbcam.data.model.Result<PoResponse> {
+    suspend fun processScan(po: String, barcode: String, selectedLine: String? = null): com.example.usbcam.data.model.Result<PoResponse> {
         // 1. Try API first
         try {
             val response = apiService.getPoDetailsSuspend(po, barcode)
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null) {
-                    Log.d("ShoeboxRepo", "API Success: Body not null, saving local...")
+                    Log.d("ShoeboxRepo", "API Success: Body not null, saving local... line=$selectedLine")
                     try {
-                        saveLocal(po, barcode, body)
+                        saveLocal(po, barcode, body, selectedLine)
                         Log.d("ShoeboxRepo", "API Success: Save local done. Returning body.")
                     } catch (e: Exception) {
                         Log.e("ShoeboxRepo", "API Success but SaveLocal Failed: ${e.message}")
@@ -66,7 +66,10 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
     }
 
     // Used when API is called externally (e.g., in Fragment), just save DB
-    suspend fun saveLocal(po: String, barcode: String, data: PoResponse) {
+    // selectedLine: line do user chọn trên UI (ưu tiên dùng), nếu null fallback về data.lean
+    suspend fun saveLocal(po: String, barcode: String, data: PoResponse, selectedLine: String? = null) {
+        val lineToSave = selectedLine ?: data.lean
+
         // 2. Save Detail
         val detail =
                 ShoeboxDetail(
@@ -80,18 +83,19 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                         Article = data.article,
                         ShoeImage = data.articleImage,
                         User_Serial_Key = "DEVICE",
-                        Line = data.lean,
+                        Line = lineToSave,
                         Synced = 0
                 )
         dao.insertDetail(detail)
 
         // 3. Update Total
-        updateTotal(po, barcode, data)
+        updateTotal(po, barcode, data, lineToSave)
     }
 
-    private suspend fun updateTotal(po: String, upc: String, data: PoResponse) {
+    private suspend fun updateTotal(po: String, upc: String, data: PoResponse, lineOverride: String? = null) {
         val details = dao.getDetailsByUpc(upc).filter { it.PO == po }
         val totalQty = details.sumOf { it.Qty }
+        val lineToSave = lineOverride ?: data.lean
 
         val currentTotal = dao.getTotalByUpcAndPo(upc, po)
         val newTotal =
@@ -100,6 +104,7 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                             Total_Qty_ERP = data.quantity ?: 0,
                             Total_Qty_Scan = totalQty,
                             Modify = getCurrentTime(),
+                            Line = lineToSave,
                             Synced = 0
                     )
                 } else {
@@ -114,7 +119,7 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                             DateScan = getCurrentTime(),
                             Modify = getCurrentTime(),
                             User_Serial_Key = "DEVICE",
-                            Line = data.lean,
+                            Line = lineToSave,
                             Synced = 0
                     )
                 }
@@ -244,18 +249,24 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
         return details.size
     }
 
-    suspend fun getTargetByTimeSlot(): TargetResponse? {
+    /**
+     * Lấy target theo dây chuyền (lean/line).
+     * @param depno Mã dây chuyền (line) do user chọn. Nếu null/rỗng, dùng default.
+     */
+    suspend fun getTargetByTimeSlot(depno: String? = null): TargetResponse? {
+        val lean = if (!depno.isNullOrBlank()) depno else "LHGG4G01"
         return try {
-            val response = apiService.getTargetByLean("LHGG4G01")
+            val response = apiService.getTargetByLean(lean)
 
             if (response.isSuccessful) {
-                Log.d("getTargetByTimeSlot", "${response.body()}")
+                Log.d("getTargetByTimeSlot", "line=$lean body=${response.body()}")
                 response.body()
             } else {
+                Log.w("getTargetByTimeSlot", "API error ${response.code()} for line=$lean")
                 null
             }
         } catch (e: Exception) {
-            Log.e("getTargetByTimeSlot", "API error", e)
+            Log.e("getTargetByTimeSlot", "API error for line=$lean", e)
             null
         }
     }

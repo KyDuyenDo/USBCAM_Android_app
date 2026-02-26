@@ -2,7 +2,7 @@
   {
     "level_": 0,
     "message_": "Start JSON generation. Platform version: 24 min SDK version: x86",
-    "file_": "D:\\Count\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
     "tag_": "debug|x86",
     "diagnosticCode_": 0,
     "memoizedIsInitialized": 1,
@@ -14,8 +14,151 @@
   },
   {
     "level_": 0,
-    "message_": "JSON \u0027D:\\Count\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\Debug\\2xk22prw\\x86\\android_gradle_build.json\u0027 was up-to-date",
-    "file_": "D:\\Count\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "message_": "rebuilding JSON D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\Debug\\2xk22prw\\x86\\android_gradle_build.json due to:",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "- a hard configure file changed, will remove stale configuration folder",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "  - D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\Debug\\2xk22prw\\x86\\metadata_generation_command.txt (LAST_MODIFIED_CHANGED)",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "removing stale contents from \u0027D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\Debug\\2xk22prw\\x86\u0027",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "created folder \u0027D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\Debug\\2xk22prw\\x86\u0027",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "executing cmake @echo off\n\"C:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\cmake\\\\3.22.1\\\\bin\\\\cmake.exe\" ^\n  \"-HD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\libcxx_helper\" ^\n  \"-DCMAKE_SYSTEM_NAME\u003dAndroid\" ^\n  \"-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\" ^\n  \"-DCMAKE_SYSTEM_VERSION\u003d24\" ^\n  \"-DANDROID_PLATFORM\u003dandroid-24\" ^\n  \"-DANDROID_ABI\u003dx86\" ^\n  \"-DCMAKE_ANDROID_ARCH_ABI\u003dx86\" ^\n  \"-DANDROID_NDK\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\ndk\\\\27.0.12077973\" ^\n  \"-DCMAKE_ANDROID_NDK\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\ndk\\\\27.0.12077973\" ^\n  \"-DCMAKE_TOOLCHAIN_FILE\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\ndk\\\\27.0.12077973\\\\build\\\\cmake\\\\android.toolchain.cmake\" ^\n  \"-DCMAKE_MAKE_PROGRAM\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\cmake\\\\3.22.1\\\\bin\\\\ninja.exe\" ^\n  \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\2xk22prw\\\\obj\\\\x86\" ^\n  \"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\2xk22prw\\\\obj\\\\x86\" ^\n  \"-DCMAKE_BUILD_TYPE\u003dDebug\" ^\n  \"-BD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\.cxx\\\\Debug\\\\2xk22prw\\\\x86\" ^\n  -GNinja ^\n  \"-DANDROID_STL\u003dc++_shared\"\n",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "@echo off\n\"C:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\cmake\\\\3.22.1\\\\bin\\\\cmake.exe\" ^\n  \"-HD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\libcxx_helper\" ^\n  \"-DCMAKE_SYSTEM_NAME\u003dAndroid\" ^\n  \"-DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON\" ^\n  \"-DCMAKE_SYSTEM_VERSION\u003d24\" ^\n  \"-DANDROID_PLATFORM\u003dandroid-24\" ^\n  \"-DANDROID_ABI\u003dx86\" ^\n  \"-DCMAKE_ANDROID_ARCH_ABI\u003dx86\" ^\n  \"-DANDROID_NDK\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\ndk\\\\27.0.12077973\" ^\n  \"-DCMAKE_ANDROID_NDK\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\ndk\\\\27.0.12077973\" ^\n  \"-DCMAKE_TOOLCHAIN_FILE\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\ndk\\\\27.0.12077973\\\\build\\\\cmake\\\\android.toolchain.cmake\" ^\n  \"-DCMAKE_MAKE_PROGRAM\u003dC:\\\\Users\\\\LVL_TX2\\\\AppData\\\\Local\\\\Android\\\\Sdk\\\\cmake\\\\3.22.1\\\\bin\\\\ninja.exe\" ^\n  \"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003dD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\2xk22prw\\\\obj\\\\x86\" ^\n  \"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003dD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\build\\\\intermediates\\\\cxx\\\\Debug\\\\2xk22prw\\\\obj\\\\x86\" ^\n  \"-DCMAKE_BUILD_TYPE\u003dDebug\" ^\n  \"-BD:\\\\CountBox\\\\app-with-model\\\\USBZ\\\\USBCAM_Android_app\\\\openCV\\\\.cxx\\\\Debug\\\\2xk22prw\\\\x86\" ^\n  -GNinja ^\n  \"-DANDROID_STL\u003dc++_shared\"\n",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "Received process result: 0",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "Exiting generation of D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\Debug\\2xk22prw\\x86\\compile_commands.json.bin normally",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "done executing cmake",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "deleted unexpected build output D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\build\\intermediates\\cxx\\Debug\\2xk22prw\\obj\\x86\\libc++_shared.so in incremental regenerate",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "tag_": "debug|x86",
+    "diagnosticCode_": 0,
+    "memoizedIsInitialized": 1,
+    "unknownFields": {
+      "fields": {}
+    },
+    "memoizedSize": -1,
+    "memoizedHashCode": 0
+  },
+  {
+    "level_": 0,
+    "message_": "hard linked D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\Debug\\2xk22prw\\x86\\compile_commands.json to D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\.cxx\\tools\\debug\\x86\\compile_commands.json",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
     "tag_": "debug|x86",
     "diagnosticCode_": 0,
     "memoizedIsInitialized": 1,
@@ -28,7 +171,7 @@
   {
     "level_": 0,
     "message_": "JSON generation completed without problems",
-    "file_": "D:\\Count\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
+    "file_": "D:\\CountBox\\app-with-model\\USBZ\\USBCAM_Android_app\\openCV\\libcxx_helper\\CMakeLists.txt",
     "tag_": "debug|x86",
     "diagnosticCode_": 0,
     "memoizedIsInitialized": 1,

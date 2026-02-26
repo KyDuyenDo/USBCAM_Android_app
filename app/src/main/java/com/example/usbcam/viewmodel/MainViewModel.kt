@@ -42,6 +42,11 @@ class MainViewModel(
 
     private val _targetData = MutableLiveData<TargetData>()
     val targetData: LiveData<TargetData> = _targetData
+
+    // Line dây chuyền được user chọn (default: LHGG4G01)
+    private val _selectedLine = MutableLiveData<String>(com.example.usbcam.utils.LinePreferences.DEFAULT_LINE)
+    val selectedLine: LiveData<String> = _selectedLine
+
     // UI State for scan result
     private val _scanResult = MutableLiveData<PoResponse?>()
     val scanResult: LiveData<PoResponse?> = _scanResult
@@ -64,6 +69,20 @@ class MainViewModel(
 
     fun setCameraEnabled(enabled: Boolean) {
         _isCameraEnabled.postValue(enabled)
+    }
+
+    /**
+     * Cập nhật line được chọn và tự động reload target + time slots
+     */
+    fun setSelectedLine(line: String) {
+        _selectedLine.value = line
+        loadAllTimeSlots()
+    }
+
+    /** Khởi tạo line từ SharedPreferences khi mở app */
+    fun initSelectedLine(context: android.content.Context) {
+        val saved = com.example.usbcam.utils.LinePreferences.getSelectedLine(context)
+        _selectedLine.value = saved
     }
 
     fun setCameraSignalError(error: String?) {
@@ -92,7 +111,7 @@ class MainViewModel(
 
     fun handleScan(po: String, barcode: String) {
         viewModelScope.launch {
-            val result = repository.processScan(po, barcode)
+            val result = repository.processScan(po, barcode, _selectedLine.value)
             // Unwrap Result to get PoResponse
             val poResponse = when (result) {
                 is com.example.usbcam.data.model.Result.Success -> result.data
@@ -153,7 +172,7 @@ class MainViewModel(
     }
 
     suspend fun verifyCode(po: String, barcode: String): PoResponse? {
-        val result = repository.processScan(po, barcode)
+        val result = repository.processScan(po, barcode, _selectedLine.value)
         // Unwrap Result to get PoResponse
         val poResponse = when (result) {
             is com.example.usbcam.data.model.Result.Success -> result.data
@@ -193,10 +212,11 @@ class MainViewModel(
 
     fun loadAllTimeSlots() {
         viewModelScope.launch {
-            val targetResponse = repository.getTargetByTimeSlot()
+            val currentLine = _selectedLine.value
+            val targetResponse = repository.getTargetByTimeSlot(currentLine)
 
             val target = targetResponse?.quantityTarget ?: 140
-            Log.d("loadAllTimeSlots", "${targetResponse?.quantityTarget}")
+            Log.d("loadAllTimeSlots", "line=$currentLine target=${targetResponse?.quantityTarget}")
             val slots = repository.getAllSlotsToday(target)
             _timeSlotList.postValue(slots)
 
@@ -230,7 +250,8 @@ class MainViewModel(
 
     fun loadTarget() {
         viewModelScope.launch {
-            val target = repository.getTargetByTimeSlot()
+            val currentLine = _selectedLine.value
+            val target = repository.getTargetByTimeSlot(currentLine)
 
             target?.let {
                 _targetData.postValue(

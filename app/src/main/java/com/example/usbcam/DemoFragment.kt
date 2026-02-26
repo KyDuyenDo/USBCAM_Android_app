@@ -7,6 +7,8 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -147,6 +149,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         viewModel.loadTarget()
         viewModel.loadAllTimeSlots()
 
+        // Khởi tạo Spinner chọn dây chuyền sản xuất
+        viewModel.initSelectedLine(requireContext())
+        setupLineSpinner()
+
         com.example.usbcam.utils.NetworkConnectionMonitor(requireContext()).observe(
                         viewLifecycleOwner
                 ) { isConnected ->
@@ -197,6 +203,42 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         setupRfidManager()
         rfidViewModel.initBoxProcessor(boxProcessor)
     }
+    /**
+     * Thiết lập Spinner chọn dây chuyền (Line).
+     * - Đọc line đã lưu từ SharedPreferences và hiển thị trước
+     * - Lưu lựa chọn mới và gọi viewModel.setSelectedLine() để reload target API
+     */
+    private fun setupLineSpinner() {
+        val spinner = mViewBinding?.spinnerLine ?: return
+        val lines = com.example.usbcam.utils.LinePreferences.availableLines
+
+        val spinnerAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            lines
+        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        spinner.adapter = spinnerAdapter
+
+        // Đặt line đã lưu trước đó
+        val savedIndex = com.example.usbcam.utils.LinePreferences.getSelectedLineIndex(requireContext())
+        spinner.setSelection(savedIndex, false) // false = không trigger listener lún đầu
+
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedLine = lines[position]
+                val currentLine = viewModel.selectedLine.value
+                if (selectedLine != currentLine) {
+                    Log.d(TAG, "Line changed: $currentLine -> $selectedLine")
+                    // Lưu vào SharedPreferences
+                    com.example.usbcam.utils.LinePreferences.saveSelectedLine(requireContext(), selectedLine)
+                    // Cập nhật ViewModel và reload target API
+                    viewModel.setSelectedLine(selectedLine)
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+
 
     private lateinit var rfidConnectionManager: com.example.usbcam.rfid.RfidConnectionManager
     private var rfidScanningStarted = false  // Protection flag

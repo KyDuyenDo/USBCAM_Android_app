@@ -182,16 +182,41 @@
                     android:orientation="horizontal"
                     android:padding="1dp">
 
+                    <!-- Line Selector (Left) -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Line:"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="14dp"
+                        android:layout_marginEnd="4dp" />
+
+                    <Spinner
+                        android:id="@+id/spinner_line"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:minWidth="90dp"
+                        android:background="@drawable/bg_status_badge"
+                        android:backgroundTint="@color/primary_blue"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:popupBackground="@color/bg_main"
+                        android:spinnerMode="dropdown" />
+
+                    <!-- Live Text (Middle - taking space) -->
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Live Camera Feed"
+                        android:text=""
                         android:textColor="@color/text_primary"
-                        android:paddingLeft="14dp"
-                        android:textSize="20dp"
+                        android:paddingLeft="10dp"
+                        android:textSize="18dp"
                         android:textStyle="bold" />
 
+                    <!-- Switch and Badge (Right) -->
                     <TextView
                         android:id="@+id/tv_live_badge"
                         android:layout_width="wrap_content"
