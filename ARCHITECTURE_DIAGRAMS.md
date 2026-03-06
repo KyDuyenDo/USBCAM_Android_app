@@ -1,3 +1,28 @@
+### Flow 1: RFID Match (Happy Path)
+```
+Camera scans → API call → RFID scans → Fetch RFID data → Compare
+→ Match! → Save to Data_Shoebox_Detail → ✅ Success
+```
+
+### Flow 2: RFID Mismatch
+```
+Camera scans → API call → RFID scans → Fetch RFID data → Compare
+→ Mismatch (PO different) → Save to Data_Shoebox_RFID_Detail 
+→ ⚠️ Warning (saved for review)
+```
+
+### Flow 3: No RFID
+```
+Camera scans → API call → No RFID scan (timeout)
+→ Save to Data_Shoebox_Detail → ✅ Success
+```
+
+### Flow 4: Offline Mode
+```
+Camera scans → API call fails → Use local cache
+→ Save with Synced = 0 → 📴 Offline (will sync later)
+→ WorkManager syncs when network returns
+
 # 📊 ARCHITECTURE DIAGRAMS
 
 ## 🏗️ System Architecture Overview
@@ -156,9 +181,9 @@ User          DemoFragment    BoxProcessor    RfidViewModel    UseCases         
  │                 │                │                │  ValidationResult.Success     │              │            │
  │                 │<────────────────────────────────────────────────┤ (isMatch=true)│              │            │
  │                 │                │                │              │                │              │            │
- │  showSuccess() │                │                │              │                │              │            │
- │  "✅ Match!"    │                │                │              │                │              │            │
- │<────────────────┤                │                │              │                │              │            │
+ │  showSuccess()  │                │                │              │                │              │            │
+ │  "Match"        │                │                │              │                │              │            │
+ │<───────────────┤                │                │              │                │              │            │
  │                 │                │                │              │                │              │            │
 ```
 
@@ -309,7 +334,7 @@ WorkManager    SyncWorker    SyncUseCase    Repository      Database      API
 │ ShoeImage            │ TEXT                                 │
 │ User_Serial_Key      │ TEXT                                 │
 │ Line                 │ TEXT                                 │
-│ Synced               │ INT (0 = No, 1 = Yes)               │
+│ Synced               │ INT (0 = No, 1 = Yes)                │
 └─────────────────────────────────────────────────────────────┘
                             ↑
                             │ Used when:
