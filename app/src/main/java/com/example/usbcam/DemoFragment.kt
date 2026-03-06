@@ -212,89 +212,106 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         val spinner = mViewBinding?.spinnerLine ?: return
         val lines = com.example.usbcam.utils.LinePreferences.availableLines
 
-        val spinnerAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_item,
-            lines
-        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        val spinnerAdapter =
+                ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, lines).also {
+                    it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                }
         spinner.adapter = spinnerAdapter
 
         // Đặt line đã lưu trước đó
-        val savedIndex = com.example.usbcam.utils.LinePreferences.getSelectedLineIndex(requireContext())
+        val savedIndex =
+                com.example.usbcam.utils.LinePreferences.getSelectedLineIndex(requireContext())
         spinner.setSelection(savedIndex, false) // false = không trigger listener lún đầu
 
-        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val selectedLine = lines[position]
-                val currentLine = viewModel.selectedLine.value
-                if (selectedLine != currentLine) {
-                    Log.d(TAG, "Line changed: $currentLine -> $selectedLine")
-                    // Lưu vào SharedPreferences
-                    com.example.usbcam.utils.LinePreferences.saveSelectedLine(requireContext(), selectedLine)
-                    // Cập nhật ViewModel và reload target API
-                    viewModel.setSelectedLine(selectedLine)
+        spinner.onItemSelectedListener =
+                object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(
+                            parent: AdapterView<*>?,
+                            view: View?,
+                            position: Int,
+                            id: Long
+                    ) {
+                        val selectedLine = lines[position]
+                        val currentLine = viewModel.selectedLine.value
+                        if (selectedLine != currentLine) {
+                            Log.d(TAG, "Line changed: $currentLine -> $selectedLine")
+                            // Lưu vào SharedPreferences
+                            com.example.usbcam.utils.LinePreferences.saveSelectedLine(
+                                    requireContext(),
+                                    selectedLine
+                            )
+                            // Cập nhật ViewModel và reload target API
+                            viewModel.setSelectedLine(selectedLine)
+                        }
+                    }
+                    override fun onNothingSelected(parent: AdapterView<*>?) {}
                 }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
     }
 
-
     private lateinit var rfidConnectionManager: com.example.usbcam.rfid.RfidConnectionManager
-    private var rfidScanningStarted = false  // Protection flag
+    private var rfidScanningStarted = false // Protection flag
 
     private fun setupRfidManager() {
-        rfidConnectionManager = com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext())
-        
+        rfidConnectionManager =
+                com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext())
+
         // Setup observers for RfidViewModel
         setupRfidObservers()
-        
-        rfidConnectionManager.setEventCallback(object : com.example.usbcam.rfid.RfidConnectionManager.RfidEventCallback {
-            override fun onConnected(isAutoConnect: Boolean) {
-                activity?.runOnUiThread {
-                    android.widget.Toast.makeText(requireContext(), "RFID Connected ✅", android.widget.Toast.LENGTH_SHORT).show()
-                    rfidViewModel.setConnected(true)
-                    
-                    // Start scanning only once after connection
-                    if (!rfidScanningStarted) {
-                        rfidScanningStarted = true
-                        rfidConnectionManager.startScanning()
-                        rfidViewModel.setScanning(true)
+
+        rfidConnectionManager.setEventCallback(
+                object : com.example.usbcam.rfid.RfidConnectionManager.RfidEventCallback {
+                    override fun onConnected(isAutoConnect: Boolean) {
+                        activity?.runOnUiThread {
+                            android.widget.Toast.makeText(
+                                            requireContext(),
+                                            "RFID Connected ✅",
+                                            android.widget.Toast.LENGTH_SHORT
+                                    )
+                                    .show()
+                            rfidViewModel.setConnected(true)
+
+                            // Start scanning only once after connection
+                            if (!rfidScanningStarted) {
+                                rfidScanningStarted = true
+                                rfidConnectionManager.startScanning()
+                                rfidViewModel.setScanning(true)
+                            }
+                        }
+                    }
+
+                    override fun onDisconnected() {
+                        activity?.runOnUiThread {
+                            rfidViewModel.setConnected(false)
+                            rfidScanningStarted = false // Reset flag on disconnect
+                        }
+                    }
+
+                    override fun onTagRead(epc: String, rssi: Int, antenna: Int, channel: Int) {
+                        activity?.runOnUiThread {
+                            Log.i(TAG, "SDK Tag Read: $epc (RSSI: $rssi)")
+
+                            // Update ViewModel - it will handle API call automatically
+                            rfidViewModel.onTagRead(epc, rssi, antenna, channel)
+                        }
+                    }
+
+                    override fun onError(message: String) {
+                        Log.e(TAG, "RFID Error: $message")
+                    }
+
+                    override fun onAutoConnectFailed() {
+                        activity?.runOnUiThread {
+                            // Requirement 6: Mở màn hình chọn thiết bị khi kết nối thất bại
+                            Log.w(TAG, "Auto-connect failed. Opening selection UI.")
+                            if (isAdded && !isSignalLostDialogShowing) {
+                                // val settingsDialog =
+                                // com.example.usbcam.rfid.RfidSettingsFragment.newInstance()
+                                // settingsDialog.sehow(parentFragmentManager, "RfidSettingsDialog")
+                            }
+                        }
                     }
                 }
-            }
-
-            override fun onDisconnected() {
-                activity?.runOnUiThread {
-                    rfidViewModel.setConnected(false)
-                    rfidScanningStarted = false  // Reset flag on disconnect
-                }
-            }
-
-            override fun onTagRead(epc: String, rssi: Int, antenna: Int, channel: Int) {
-                activity?.runOnUiThread {
-                    Log.i(TAG, "SDK Tag Read: $epc (RSSI: $rssi)")
-                    
-                    // Update ViewModel - it will handle API call automatically
-                    rfidViewModel.onTagRead(epc, rssi, antenna, channel)
-                }
-            }
-
-            override fun onError(message: String) {
-                Log.e(TAG, "RFID Error: $message")
-            }
-
-            override fun onAutoConnectFailed() {
-                activity?.runOnUiThread {
-                    // Requirement 6: Mở màn hình chọn thiết bị khi kết nối thất bại
-                    Log.w(TAG, "Auto-connect failed. Opening selection UI.")
-                    if (isAdded && !isSignalLostDialogShowing) {
-                        //val settingsDialog = com.example.usbcam.rfid.RfidSettingsFragment.newInstance()
-                        //settingsDialog.sehow(parentFragmentManager, "RfidSettingsDialog")
-                    }
-                }
-            }
-        })
+        )
 
         // Initialize and try auto-connect
         rfidConnectionManager.initialize()
@@ -315,7 +332,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         // Last EPC
         rfidViewModel.lastEpc.observe(viewLifecycleOwner) { epc ->
             mViewBinding?.tvDashboardLastRfid?.text = if (epc.isNotEmpty()) epc else "---"
-            
+
             // Update icon alpha
             mViewBinding?.ivRfidIcon?.alpha = if (epc.isNotEmpty()) 1.0f else 0.3f
         }
@@ -339,7 +356,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         // Error messages (show as toast)
         rfidViewModel.errorMessage.observe(viewLifecycleOwner) { error ->
             if (error != null) {
-                android.widget.Toast.makeText(requireContext(), error, android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(
+                                requireContext(),
+                                error,
+                                android.widget.Toast.LENGTH_SHORT
+                        )
+                        .show()
                 rfidViewModel.clearError()
             }
         }
@@ -347,11 +369,16 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         // Info messages
         rfidViewModel.infoMessage.observe(viewLifecycleOwner) { info ->
             if (info != null) {
-                android.widget.Toast.makeText(requireContext(), info, android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(
+                                requireContext(),
+                                info,
+                                android.widget.Toast.LENGTH_SHORT
+                        )
+                        .show()
                 rfidViewModel.clearInfo()
             }
         }
-        
+
         // 🔹 RFID Validation Result Observer
         viewModel.validationResult.observe(viewLifecycleOwner) { result ->
             if (result != null) {
@@ -362,24 +389,26 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                             // 🔹 Update last success tracking
 
                             android.widget.Toast.makeText(
-                                requireContext(), 
-                                result.message, 
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                            
+                                            requireContext(),
+                                            result.message,
+                                            android.widget.Toast.LENGTH_SHORT
+                                    )
+                                    .show()
+
                             // 🔹 Sync RfidViewModel UI with the fetched data
                             rfidViewModel.updateFromValidationResult(result)
-                            
-                            // 🔹 Reset RFID after successful save 
-                            // rfidViewModel.clearRfidData() 
+
+                            // 🔹 Reset RFID after successful save
+                            // rfidViewModel.clearRfidData()
                         } else {
                             // Data mismatch - warning
                             android.widget.Toast.makeText(
-                                requireContext(), 
-                                result.message, 
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                            
+                                            requireContext(),
+                                            result.message,
+                                            android.widget.Toast.LENGTH_LONG
+                                    )
+                                    .show()
+
                             // 🔹 Sync RfidViewModel UI with the mismatch data/fields
                             rfidViewModel.updateFromValidationResult(result)
                         }
@@ -387,16 +416,17 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     is com.example.usbcam.data.model.ValidationResult.Error -> {
                         // Validation error
                         android.widget.Toast.makeText(
-                            requireContext(), 
-                            "${result.message}",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
+                                        requireContext(),
+                                        "${result.message}",
+                                        android.widget.Toast.LENGTH_LONG
+                                )
+                                .show()
                     }
                 }
                 viewModel.clearValidationResult()
             }
         }
-        
+
         // Field match states (Visual feedback: Red text on mismatch)
         rfidViewModel.isPoMatch.observe(viewLifecycleOwner) { isMatch ->
             updateFieldColor(mViewBinding?.tvRfidPo, isMatch)
@@ -413,19 +443,25 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             updateFieldColor(mViewBinding?.tvSizeValue, isMatch)
         }
 
-        rfidViewModel.isUpcMatch.observe(viewLifecycleOwner){ isMatch ->
+        rfidViewModel.isUpcMatch.observe(viewLifecycleOwner) { isMatch ->
             updateFieldColor(mViewBinding?.tvRfidUpc, isMatch)
             updateFieldColor(mViewBinding?.tvUpcValue, isMatch)
         }
-
     }
 
     private fun updateFieldColor(textView: android.widget.TextView?, isMatch: Boolean) {
-        val colorInt = if (isMatch) {
-            androidx.core.content.ContextCompat.getColor(requireContext(), R.color.text_primary)
-        } else {
-            androidx.core.content.ContextCompat.getColor(requireContext(), R.color.error_red)
-        }
+        val colorInt =
+                if (isMatch) {
+                    androidx.core.content.ContextCompat.getColor(
+                            requireContext(),
+                            R.color.text_primary
+                    )
+                } else {
+                    androidx.core.content.ContextCompat.getColor(
+                            requireContext(),
+                            R.color.error_red
+                    )
+                }
         textView?.setTextColor(colorInt)
     }
 
@@ -477,8 +513,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         viewModel.setCameraCountdown(null)
         stopSignalDetection()
 
-        // ❗ CRITICAL: Stop processing thread FIRST. 
-        // Use a flag and interrupt, but don't release Mats here as they might still be in use for 1-2ms.
+        // ❗ CRITICAL: Stop processing thread FIRST.
+        // Use a flag and interrupt, but don't release Mats here as they might still be in use for
+        // 1-2ms.
         stopProcessingThread()
 
         // ❗ CRITICAL: Remove callback BEFORE closing camera.
@@ -528,7 +565,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                     mViewBinding?.swCamera?.isChecked = false
                                 }
                             }
-                            
+
                             // Exit detection loop after shutdown
                             return@launch
                         } else {
@@ -637,7 +674,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         if (data == null || !isAdded || isCameraStopping) return
         lastFrameTime = System.currentTimeMillis() // Signal detected
 
-        //OPTIMIZATION 3: Only initialize YUV fallback if needed
+        // OPTIMIZATION 3: Only initialize YUV fallback if needed
         if (frameWidth != width || frameHeight != height) {
             frameWidth = width
             frameHeight = height
@@ -651,8 +688,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
         // FIX 4: Prevent queue backlog when USB lags - drop oldest frame if full
         if (!frameQueue.offer(data)) {
-            frameQueue.poll()  // Remove oldest
-            frameQueue.offer(data)  // Add newest
+            frameQueue.poll() // Remove oldest
+            frameQueue.offer(data) // Add newest
         }
     }
 
@@ -686,9 +723,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         frameQueue.clear()
 
         // ❗ REFINEMENT: Don't release OpenCV Mats immediately here.
-        // They are shared objects and the thread might still be in the middle of a processFrame loop.
-        // Let onDestroy or a safe lifecycle event handle it, or just let them stay allocated for the next session.
-        // Releasing them here while a thread is interrupted often causes illegal state/memory access.
+        // They are shared objects and the thread might still be in the middle of a processFrame
+        // loop.
+        // Let onDestroy or a safe lifecycle event handle it, or just let them stay allocated for
+        // the next session.
+        // Releasing them here while a thread is interrupted often causes illegal state/memory
+        // access.
         Log.d(TAG, "Processing thread stopped")
     }
 
@@ -744,7 +784,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         } catch (e: Exception) {
             Log.e(TAG, "Error in processing logic", e)
         } finally {
-            //CRITICAL: Always recycle bitmap
+            // CRITICAL: Always recycle bitmap
             scanBitmap?.recycle()
         }
 
@@ -752,7 +792,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         updateUI()
     }
 
-    //OPTIMIZATION 7: Smart brightness boost
+    // OPTIMIZATION 7: Smart brightness boost
     private fun createScanBitmap(): Bitmap? {
         return try {
             val srcMat =
@@ -787,11 +827,21 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     currentApiResponse = null
                     rfidViewModel.setCurrentCameraResponse(null)
                 }
-                // 🔹 REQUIREMENT: If no box in view (IDLE), reset RFID data
-                // This ensures that "next time" a box comes, the old tag is not used.
-                if (rfidViewModel.lastEpc.value?.isNotEmpty() == true) {
-                    Log.d(TAG, "System IDLE -> Clearing leftover RFID data")
+
+                // 🔹 REQUIREMENT: Once state transitions to IDLE (or if there happens to be
+                // leftover EPC data),
+                // clear App side memory AND Device side memory to completely reset for the next
+                // loop.
+                if (state != lastState || rfidViewModel.lastEpc.value?.isNotEmpty() == true) {
+                    Log.d(
+                            TAG,
+                            "System IDLE / New Cycle -> Clearing leftover RFID App Data and Restoring Device State to standard configuration"
+                    )
                     rfidViewModel.clearRfidData()
+
+                    if (::rfidConnectionManager.isInitialized) {
+                        rfidConnectionManager.clearDeviceState()
+                    }
                 }
             }
 
@@ -873,19 +923,19 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     }
                 }
 
-//                if (
-//                    state == AppState.VERIFYING &&
-//                    !isApiCalling &&
-//                    currentApiResponse == null
-//                ) {
-//                    isApiCalling = true // khóa ngay lập tức
-//                    val po = boxProcessor.po
-//                    val barcode = boxProcessor.barcode
-//
-//                    if (!po.isNullOrBlank() && !barcode.isNullOrBlank()) {
-//                        viewModel.handleScan(po, barcode)
-//                    }
-//                }
+                //                if (
+                //                    state == AppState.VERIFYING &&
+                //                    !isApiCalling &&
+                //                    currentApiResponse == null
+                //                ) {
+                //                    isApiCalling = true // khóa ngay lập tức
+                //                    val po = boxProcessor.po
+                //                    val barcode = boxProcessor.barcode
+                //
+                //                    if (!po.isNullOrBlank() && !barcode.isNullOrBlank()) {
+                //                        viewModel.handleScan(po, barcode)
+                //                    }
+                //                }
 
                 if (state == AppState.VERIFYING && !isApiCalling && currentApiResponse == null) {
                     callApi()
@@ -896,9 +946,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
     private fun callApi() {
         val barcode = boxProcessor.barcode ?: return
-        val po  = boxProcessor.po ?: return
+        val po = boxProcessor.po ?: return
 
-        
         isApiCalling = true
 
         apiService
@@ -912,13 +961,30 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                 isApiCalling = false
                                 if (response.isSuccessful && response.body() != null) {
                                     val body = response.body()!!
+
+                                    // 🔹 REQUIREMENT: STOP SCANNING IMMEDIATELY upon successful API
+                                    // result, and only THEN compare PO
+                                    if (rfidScanningStarted) {
+                                        Log.i(
+                                                TAG,
+                                                "API Success -> Stopping RFID scan before PO comparison."
+                                        )
+                                        rfidScanningStarted = false
+                                        if (::rfidConnectionManager.isInitialized) {
+                                            rfidConnectionManager.stopScanning()
+                                        }
+                                        rfidViewModel.setScanning(false)
+                                    }
+
                                     currentApiResponse = body
                                     rfidViewModel.setCurrentCameraResponse(body)
-                                    
+
                                     // 🔖 Get scanned RFID code from RfidViewModel
-                                    val scannedRfid = rfidViewModel.lastEpc.value?.takeIf { it.isNotBlank() }
-                                    
-                                    // Pass RFID code to validation logic
+                                    val scannedRfid =
+                                            rfidViewModel.lastEpc.value?.takeIf { it.isNotBlank() }
+
+                                    // Pass RFID code to validation logic (proceeds to call and
+                                    // compare the PO)
                                     viewModel.saveScanData(po, barcode, body, scannedRfid)
                                     boxProcessor.onApiVerification(true)
                                 } else {
@@ -957,7 +1023,6 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             }
         }
     }
-
 
     private fun handleStateFeedback(newState: AppState) {
         if (toneGen == null)

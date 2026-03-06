@@ -24,23 +24,24 @@ import com.cf.zsdk.uitl.FormatUtil
 
 /**
  * RfidManager - USB RFID Tag Reader Manager
- * 
- * Manages USB connection to RFID reader and provides tag scanning functionality.
- * Singleton pattern to ensure only one instance manages the RFID device.
+ *
+ * Manages USB connection to RFID reader and provides tag scanning functionality. Singleton pattern
+ * to ensure only one instance manages the RFID device.
  */
-class RfidManager private constructor(private val context: Context) : IUsbConnectDone, IReadDataCallback {
+class RfidManager private constructor(private val context: Context) :
+        IUsbConnectDone, IReadDataCallback {
 
     companion object {
         private const val TAG = "RfidManager"
         private const val ACTION_USB_PERMISSION = "com.example.usbcam.USB_PERMISSION"
-        
-        @Volatile
-        private var instance: RfidManager? = null
+
+        @Volatile private var instance: RfidManager? = null
 
         fun getInstance(context: Context): RfidManager {
-            return instance ?: synchronized(this) {
-                instance ?: RfidManager(context.applicationContext).also { instance = it }
-            }
+            return instance
+                    ?: synchronized(this) {
+                        instance ?: RfidManager(context.applicationContext).also { instance = it }
+                    }
         }
     }
 
@@ -55,120 +56,133 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
     private var callback: TagReadCallback? = null
     private var isScanning = false
     private var isConnected = false
-    
-    private val usbReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                ACTION_USB_PERMISSION -> {
-                    synchronized(this) {
-                        val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-                        } else {
-                            @Suppress("DEPRECATION")
-                            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                        }
-                        
-                        if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                            device?.let {
-                                Log.d(TAG, "USB permission granted for device: ${it.deviceName}")
-                                connectToDevice(it)
+
+    private val usbReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    when (intent.action) {
+                        ACTION_USB_PERMISSION -> {
+                            synchronized(this) {
+                                val device =
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            intent.getParcelableExtra(
+                                                    UsbManager.EXTRA_DEVICE,
+                                                    UsbDevice::class.java
+                                            )
+                                        } else {
+                                            @Suppress("DEPRECATION")
+                                            intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                                        }
+
+                                if (intent.getBooleanExtra(
+                                                UsbManager.EXTRA_PERMISSION_GRANTED,
+                                                false
+                                        )
+                                ) {
+                                    device?.let {
+                                        Log.d(
+                                                TAG,
+                                                "USB permission granted for device: ${it.deviceName}"
+                                        )
+                                        connectToDevice(it)
+                                    }
+                                } else {
+                                    Log.w(TAG, "USB permission denied")
+                                    callback?.onError("USB permission denied")
+                                }
                             }
-                        } else {
-                            Log.w(TAG, "USB permission denied")
-                            callback?.onError("USB permission denied")
                         }
-                    }
-                }
-                UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                    val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
-                    }
-                    
-                    if (device != null && targetDevice != null &&
-                        device.productId == targetDevice?.productId &&
-                        device.vendorId == targetDevice?.vendorId) {
-                        Log.w(TAG, "RFID device detached")
-                        isConnected = false
-                        callback?.onConnectionStatus(false, "RFID device disconnected")
-                        release()
+                        UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                            val device =
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        intent.getParcelableExtra(
+                                                UsbManager.EXTRA_DEVICE,
+                                                UsbDevice::class.java
+                                        )
+                                    } else {
+                                        @Suppress("DEPRECATION")
+                                        intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                                    }
+
+                            if (device != null &&
+                                            targetDevice != null &&
+                                            device.productId == targetDevice?.productId &&
+                                            device.vendorId == targetDevice?.vendorId
+                            ) {
+                                Log.w(TAG, "RFID device detached")
+                                isConnected = false
+                                callback?.onConnectionStatus(false, "RFID device disconnected")
+                                release()
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
 
-    /**
-     * Initialize the RFID SDK
-     */
+    /** Initialize the RFID SDK */
     fun init() {
         try {
             if (usbCore == null) {
                 // Initialize SDK first before getting USB core (as per cf-sdk manual)
                 CfSdk.load()
-                
+
                 usbCore = CfSdk.get(SdkC.USB)
                 usbCore?.init(context)
                 Log.d(TAG, "CF SDK initialized successfully")
             }
-            
+
             // Register USB receiver
-            val filter = IntentFilter().apply {
-                addAction(ACTION_USB_PERMISSION)
-                addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
-            }
+            val filter =
+                    IntentFilter().apply {
+                        addAction(ACTION_USB_PERMISSION)
+                        addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+                    }
             context.registerReceiver(usbReceiver, filter)
-            
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing SDK: ${e.message}", e)
             callback?.onError("Failed to initialize RFID SDK: ${e.message}")
         }
     }
 
-    /**
-     * Set callback for tag reading events
-     */
+    /** Set callback for tag reading events */
     fun setCallback(callback: TagReadCallback?) {
         this.callback = callback
     }
 
-    /**
-     * Get all connected USB devices (PID/VID pairs)
-     */
+    /** Get all connected USB devices (PID/VID pairs) */
     fun getAllDevices(): List<Pair<Int, Int>> {
         return try {
             // Convert android.util.Pair to kotlin.Pair
             usbCore?.getAllDevicePidAndVid()?.map { androidPair ->
                 Pair(androidPair.first, androidPair.second)
-            } ?: emptyList()
+            }
+                    ?: emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Error getting USB devices: ${e.message}", e)
             emptyList()
         }
     }
 
-    /**
-     * Connect to RFID device by PID and VID
-     */
+    /** Connect to RFID device by PID and VID */
     fun connectDevice(pid: Int, vid: Int) {
         try {
             if (usbCore == null) {
                 init()
             }
-            
+
             targetDevice = usbCore?.findTargetDevice(pid, vid)
             if (targetDevice != null) {
                 // Request USB permission
                 val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
-                val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    PendingIntent.FLAG_MUTABLE
-                } else {
-                    0
-                }
-                val permissionIntent = PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), flags)
-                
+                val flags =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            PendingIntent.FLAG_MUTABLE
+                        } else {
+                            0
+                        }
+                val permissionIntent =
+                        PendingIntent.getBroadcast(context, 0, Intent(ACTION_USB_PERMISSION), flags)
+
                 if (usbManager.hasPermission(targetDevice)) {
                     connectToDevice(targetDevice!!)
                 } else {
@@ -183,9 +197,7 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
         }
     }
 
-    /**
-     * Internal method to connect to device after permission granted
-     */
+    /** Internal method to connect to device after permission granted */
     private fun connectToDevice(device: UsbDevice) {
         try {
             usbCore?.connectDevice(context, device, this)
@@ -195,19 +207,17 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
         }
     }
 
-    /**
-     * Start RFID tag inventory (scanning)
-     */
+    /** Start RFID tag inventory (scanning) */
     fun startScanning() {
         if (!isConnected) {
             callback?.onError("RFID device not connected")
             return
         }
-        
+
         try {
             val cmdBytes = CmdBuilder.buildInventoryISOContinueCmd(0.toByte(), 0)
             val success = usbCore?.writeData(cmdBytes, 50) ?: false
-            
+
             if (success) {
                 isScanning = true
                 Log.d(TAG, "Started RFID scanning")
@@ -221,14 +231,12 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
         }
     }
 
-    /**
-     * Stop RFID tag inventory (scanning)
-     */
+    /** Stop RFID tag inventory (scanning) */
     fun stopScanning() {
         try {
             val cmdBytes = CmdBuilder.buildStopInventoryCmd()
             val success = usbCore?.writeData(cmdBytes, 50) ?: false
-            
+
             if (success) {
                 isScanning = false
                 Log.d(TAG, "Stopped RFID scanning")
@@ -242,19 +250,29 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
         }
     }
 
-    /**
-     * Check if currently scanning
-     */
+    /** Check if currently scanning */
     fun isScanning(): Boolean = isScanning
 
-    /**
-     * Check if device is connected
-     */
+    /** Check if device is connected */
     fun isConnected(): Boolean = isConnected
 
-    /**
-     * Release resources
-     */
+    /** Clear device state to return to a standard empty state */
+    fun clearDeviceState() {
+        if (!isConnected) return
+        try {
+            val cmdBytes = CmdBuilder.buildModuleInitCmd()
+            val success = usbCore?.writeData(cmdBytes, 50) ?: false
+            if (success) {
+                Log.d(TAG, "Sent Module Init Command to clear device state")
+            } else {
+                Log.e(TAG, "Failed to send Module Init command")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing device state: ${e.message}", e)
+        }
+    }
+
+    /** Release resources */
     fun release() {
         try {
             isScanning = false
@@ -263,13 +281,13 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
             usbCore?.release()
             usbCore = null
             targetDevice = null
-            
+
             try {
                 context.unregisterReceiver(usbReceiver)
             } catch (e: IllegalArgumentException) {
                 // Receiver not registered
             }
-            
+
             Log.d(TAG, "RFID Manager released")
         } catch (e: Exception) {
             Log.e(TAG, "Error releasing: ${e.message}", e)
@@ -279,16 +297,16 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
     // IUsbConnectDone implementation
     override fun onUsbConnectDone(success: Boolean) {
         isConnected = success
-        
+
         if (success) {
             Log.d(TAG, "USB RFID device connected successfully")
             callback?.onConnectionStatus(true, "Connected to RFID reader")
-            
+
             // Query device parameters to check/switch to USB App Mode
             try {
                 val paramCmd = CmdBuilder.buildGetAllParamCmd()
                 usbCore?.writeData(paramCmd, 500)
-                
+
                 // Start reading data asynchronously
                 usbCore?.readDataAsync(10)
                 usbCore?.setIReadDataCallback(this)
@@ -304,10 +322,10 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
     // IReadDataCallback implementation
     override fun onDataBack(bytes: ByteArray?) {
         if (bytes == null || bytes.isEmpty()) return
-        
+
         try {
             val cmdType = CmdHandler.getCmdType(bytes)
-            
+
             when (cmdType) {
                 CmdType.TYPE_GET_ALL_PARAM -> {
                     handleAllParamResponse(bytes)
@@ -324,25 +342,23 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
         }
     }
 
-    /**
-     * Handle device parameter response and auto-switch to USB mode if needed
-     */
+    /** Handle device parameter response and auto-switch to USB mode if needed */
     private fun handleAllParamResponse(bytes: ByteArray) {
         try {
             val obj = CmdHandler.handleCmd(CmdType.TYPE_GET_ALL_PARAM, bytes)
             val cmdData = CmdData(obj)
             val allParam = cmdData.data as? AllParamBean
-            
+
             if (allParam != null && allParam.mStatus == 0) {
                 // Check if Interface is not USB App Mode (0x01)
                 if (allParam.mInterface.toInt() != 0x01) {
                     Log.d(TAG, "Switching from mode ${allParam.mInterface} to USB App Mode (0x01)")
-                    
+
                     // Force set to USB mode
                     allParam.mInterface = 0x01
                     val setBytes = CmdBuilder.buildSetAllParamCmd(allParam)
                     usbCore?.writeData(setBytes, 500)
-                    
+
                     callback?.onConnectionStatus(true, "Switching to USB mode...")
                 } else {
                     Log.d(TAG, "Already in USB App Mode")
@@ -353,21 +369,22 @@ class RfidManager private constructor(private val context: Context) : IUsbConnec
         }
     }
 
-    /**
-     * Handle inventory (tag read) response
-     */
+    /** Handle inventory (tag read) response */
     private fun handleInventoryResponse(bytes: ByteArray) {
         try {
             val obj = CmdHandler.handleCmd(CmdType.TYPE_INVENTORY, bytes)
-            
+
             if (obj is TagInfoBean) {
                 if (obj.mEPCNum != null && obj.mEPCNum.isNotEmpty()) {
                     val epc = FormatUtil.bytesToHexStrNoSpace(obj.mEPCNum)
                     val rssi = obj.mRSSI?.toInt() ?: 0
                     val antenna = obj.mAntenna?.toInt() ?: 0
                     val channel = obj.mChannel?.toInt() ?: 0
-                    
-                    Log.d(TAG, "Tag Read - EPC: $epc, RSSI: $rssi, Antenna: $antenna, Channel: $channel")
+
+                    Log.d(
+                            TAG,
+                            "Tag Read - EPC: $epc, RSSI: $rssi, Antenna: $antenna, Channel: $channel"
+                    )
                     callback?.onTagRead(epc, rssi, antenna, channel)
                 }
             }
