@@ -52,6 +52,9 @@ class RfidViewModel(
     val scannedEpcs: Set<String>
         get() = _scannedEpcs
 
+    data class TagRead(val rssi: Int, val antenna: Int, val channel: Int)
+    private val _tagReadings = mutableMapOf<String, MutableList<TagRead>>()
+
     private val _lastRssi = MutableLiveData<Int>(0)
     val lastRssi: LiveData<Int> = _lastRssi
 
@@ -127,9 +130,47 @@ class RfidViewModel(
 
         Log.d(TAG, "Tag Read (Trimmed): EPC=$trimmedEpc (${trimmedEpc.length} chars)")
 
+        val list = _tagReadings.getOrPut(trimmedEpc) { mutableListOf() }
+        list.add(TagRead(rssi, antenna, channel))
+
         _scannedEpcs.add(trimmedEpc)
         _lastEpc.value = trimmedEpc
         _lastRssi.value = rssi
+    }
+
+    /** Calculate average RSSI and find the best EPC */
+    fun processAndGetBestEpc(): String? {
+        if (_tagReadings.isEmpty()) return null
+
+        var bestEpc: String? = null
+        var maxAverageRssi = Double.NEGATIVE_INFINITY
+
+        for ((epc, reads) in _tagReadings) {
+            val byAntenna = reads.groupBy { it.antenna }
+            for ((antenna, antReads) in byAntenna) {
+                val sortedRssi = antReads.map { it.rssi }.sorted()
+                // Drop extreme noise values if we have enough reads
+                val filtered =
+                        if (sortedRssi.size >= 4) sortedRssi.drop(1).dropLast(1) else sortedRssi
+                val avg = filtered.average()
+
+                Log.d(
+                        TAG,
+                        "EPC: $epc, Ant: $antenna, Avg RSSI: $avg, Count: ${antReads.size} (Filtered: ${filtered.size})"
+                )
+
+                if (avg > maxAverageRssi) {
+                    maxAverageRssi = avg
+                    bestEpc = epc
+                }
+            }
+        }
+
+        Log.d(TAG, "Best EPC determined: $bestEpc with Avg RSSI: $maxAverageRssi")
+        if (bestEpc != null) {
+            _lastEpc.postValue(bestEpc)
+        }
+        return bestEpc
     }
 
     /** Update ViewModel data using result from validation UseCase (called from outside) */
@@ -230,6 +271,7 @@ class RfidViewModel(
     /** Clear all RFID data */
     fun clearRfidData() {
         _scannedEpcs.clear()
+        _tagReadings.clear()
         _lastEpc.value = ""
         _lastRssi.value = 0
         _rfidData.value = null

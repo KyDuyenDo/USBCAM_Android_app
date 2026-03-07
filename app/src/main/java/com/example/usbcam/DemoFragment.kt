@@ -845,16 +845,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
             // 🔹 REQUIREMENT: Only start scanning when motion is physically detected (SCANNING
             // state)
-            if (state == AppState.SCANNING && !rfidScanningStarted) {
-                if (rfidViewModel.isConnected.value == true) {
-                    Log.i(TAG, "Motion Detected (SCANNING State) -> Starting RFID sequence.")
-                    rfidScanningStarted = true
-                    if (::rfidConnectionManager.isInitialized) {
-                        rfidConnectionManager.startScanning()
-                    }
-                    rfidViewModel.setScanning(true)
-                }
-            }
+            // (Removed: Scanning now starts after camera processing completes)
 
             // 🔹 REQUIREMENT: Stop scanning if system goes back to IDLE (or resets)
             if ((state == AppState.IDLE || state == AppState.RESETTING) && rfidScanningStarted) {
@@ -960,6 +951,56 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         }
     }
 
+    private fun finalizeVerification(
+            po: String,
+            barcode: String,
+            data: com.example.usbcam.api.PoResponse
+    ) {
+        if (!isAdded) return
+        currentApiResponse = data
+        rfidViewModel.setCurrentCameraResponse(data)
+
+        if (rfidViewModel.isConnected.value == true) {
+            Log.i(
+                    TAG,
+                    "Camera Data Ready -> Starting RFID scan for ${Config.RFID_SCAN_WINDOW_MS}ms"
+            )
+            rfidScanningStarted = true
+            rfidViewModel.clearRfidData()
+
+            if (::rfidConnectionManager.isInitialized) {
+                rfidConnectionManager.startScanning()
+            }
+            rfidViewModel.setScanning(true)
+
+            android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed(
+                            {
+                                if (isAdded && rfidScanningStarted) {
+                                    rfidScanningStarted = false
+                                    if (::rfidConnectionManager.isInitialized) {
+                                        rfidConnectionManager.stopScanning()
+                                    }
+                                    rfidViewModel.setScanning(false)
+
+                                    val bestEpc = rfidViewModel.processAndGetBestEpc()
+                                    Log.i(TAG, "RFID Scan complete. Best EPC: $bestEpc")
+
+                                    val scannedRfids =
+                                            if (bestEpc != null) setOf(bestEpc) else emptySet()
+                                    viewModel.saveScanData(po, barcode, data, scannedRfids)
+                                    boxProcessor.onApiVerification(true)
+                                }
+                            },
+                            Config.RFID_SCAN_WINDOW_MS
+                    )
+        } else {
+            val scannedRfids = emptySet<String>()
+            viewModel.saveScanData(po, barcode, data, scannedRfids)
+            boxProcessor.onApiVerification(true)
+        }
+    }
+
     private fun callApi() {
         val barcode = boxProcessor.barcode ?: return
         val po = boxProcessor.po ?: return
@@ -978,30 +1019,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                 if (response.isSuccessful && response.body() != null) {
                                     val body = response.body()!!
 
-                                    // 🔹 REQUIREMENT: STOP SCANNING IMMEDIATELY upon successful API
-                                    // result, and only THEN compare PO
-                                    if (rfidScanningStarted) {
-                                        Log.i(
-                                                TAG,
-                                                "API Success -> Stopping RFID scan before PO comparison."
-                                        )
-                                        rfidScanningStarted = false
-                                        if (::rfidConnectionManager.isInitialized) {
-                                            rfidConnectionManager.stopScanning()
-                                        }
-                                        rfidViewModel.setScanning(false)
-                                    }
-
-                                    currentApiResponse = body
-                                    rfidViewModel.setCurrentCameraResponse(body)
-
-                                    // 🔖 Get all accumulated RFID codes from RfidViewModel
-                                    val scannedRfids = rfidViewModel.scannedEpcs.toSet()
-
-                                    // Pass RFID codes to validation logic (proceeds to call and
-                                    // compare the PO for each tag)
-                                    viewModel.saveScanData(po, barcode, body, scannedRfids)
-                                    boxProcessor.onApiVerification(true)
+                                    // 🔹 REQUIREMENT: Start scanning for duration after API success
+                                    finalizeVerification(po, barcode, body)
                                 } else {
                                     // Fallback: API returned Check for local data
                                     fallbackToLocal(po, barcode)
@@ -1026,16 +1045,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             val localData = viewModel.getLocalData(po, barcode)
             if (localData != null) {
                 Log.d(TAG, "Fallback Success: Loaded local data")
-
-                currentApiResponse = localData
-                rfidViewModel.setCurrentCameraResponse(localData)
-
-                val scannedRfids = rfidViewModel.scannedEpcs.toSet()
-                viewModel.saveScanData(po, barcode, localData, scannedRfids)
-
                 viewModel.loadAllTimeSlots()
                 viewModel.loadTotal()
-                boxProcessor.onApiVerification(true)
+                finalizeVerification(po, barcode, localData)
             } else {
                 Log.e(TAG, "Fallback Failed: No local data found")
                 boxProcessor.onApiVerification(false)

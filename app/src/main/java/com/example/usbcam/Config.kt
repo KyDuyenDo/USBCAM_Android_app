@@ -219,4 +219,11 @@ object Config {
 
     const val MOTION_LOW_THRESHOLD: Float = 5f
     const val MOTION_MEDIUM_THRESHOLD: Float = 20f
+
+    // =========================================================
+    // RFID CONFIGURATION
+    // =========================================================
+
+    /** Time window (ms) to collect RFID tags before selecting the best match */
+    const val RFID_SCAN_WINDOW_MS = 500L
 }
