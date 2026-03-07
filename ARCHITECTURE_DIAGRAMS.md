@@ -5,99 +5,77 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         📱 PRESENTATION LAYER                        │
-│  ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐  │
-│  │  DemoFragment  │  │  MainActivity   │  │  RfidScanner        │  │
-│  │  • Camera UI   │  │  • Main coord.  │  │  Fragment           │  │
-│  │  • Box display │  │  • Navigation   │  │  • RFID UI          │  │
-│  └────────┬───────┘  └────────────────┘  └──────────┬──────────┘  │
-│           │                                           │              │
-│           └─────────────────┬─────────────────────────┘              │
-│                             ↓                                        │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │                      ViewModels                                │ │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐│ │
-│  │  │MainViewModel │  │RfidViewModel │  │  ProcessingState     ││ │
-│  │  │• State mgmt  │  │• RFID scan   │  │  • Idle              ││ │
-│  │  │• API calls   │  │• Validation  │  │  • Processing        ││ │
-│  │  │• UI updates  │  │• Display     │  │  • Success/Warning   ││ │
-│  │  └──────────────┘  └──────────────┘  └──────────────────────┘│ │
-│  └────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-                                  ↓
-┌─────────────────────────────────────────────────────────────────────┐
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                        DemoFragment                           │  │
+│  │  • UI Orchestration (Camera + RFID)                           │  │
+│  │  • 500ms RFID Scanning Window logic                           │  │
+│  │  • Lifecycle & Camera Management                              │  │
+│  └─────────────────────────────┬─────────────────────────────────┘  │
+│                                │                                    │
+│  ┌─────────────────────────────▼─────────────────────────────────┐  │
+│  │                        BoxProcessor                           │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────┐  │  │
+│  │  │BarcodeDecoder│  │ POExtractor  │  │   TrackingManager   │  │  │
+│  │  └──────────────┘  └──────────────┘  └─────────────────────┘  │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────┐  │  │
+│  │  │BlurDetector  │  │PresenceDet.  │  │   OCR Fusion        │  │  │
+│  │  └──────────────┘  └──────────────┘  └─────────────────────┘  │  │
+│  └─────────────────────────────┬─────────────────────────────────┘  │
+│                                │                                    │
+│  ┌─────────────────────────────▼─────────────────────────────────┐  │
+│  │                      ViewModels                                │  │
+│  │  ┌─────────────────────────┐     ┌─────────────────────────┐   │  │
+│  │  │      MainViewModel      │     │      RfidViewModel      │   │  │
+│  │  │  • Global State         │<───>│  • Hardware connection  │   │  │
+│  │  │  • Data persistence     │     │  • Best EPC calculation │   │  │
+│  │  │  • UI Event bus         │     │  • RFID API calls       │   │  │
+│  │  └─────────────────────────┘     └─────────────────────────┘   │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────┬─────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────┐
 │                          🎯 DOMAIN LAYER                             │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │                        Use Cases                               │ │
 │  │  ┌─────────────────────────────────────────────────────────┐  │ │
-│  │  │  ProcessCameraDataUseCase                               │  │ │
-│  │  │  • Call API for PO details                              │  │ │
-│  │  │  • Fallback to local cache                              │  │ │
-│  │  │  • Return Result<PoResponse>                            │  │ │
-│  │  └─────────────────────────────────────────────────────────┘  │ │
-│  │  ┌─────────────────────────────────────────────────────────┐  │ │
+│  │  │  ProcessCameraWithRfidUseCase                           │  │ │
+│  │  │  • Main entry point for save logic                      │  │ │
+│  │  │  • Orchestrates validation if RFIDs present             │  │ │
+│  │  │  • Fallback to normal save if no RFIDs                  │  │ │
+│  │  └──────────────────────────┬──────────────────────────────┘  │ │
+│  │                             │                                  │ │
+│  │  ┌──────────────────────────▼──────────────────────────────┐  │ │
 │  │  │  ValidateWithRfidUseCase                                │  │ │
-│  │  │  1. Fetch RFID data from API                            │  │ │
-│  │  │  2. Compare camera vs RFID data                         │  │ │
-│  │  │     ├─ PO match?                                        │  │ │
-│  │  │     ├─ Size match?                                      │  │ │
-│  │  │     ├─ Article match?                                   │  │ │
-│  │  │     └─ UPC match?                                       │  │ │
-│  │  │  3. Save based on result:                               │  │ │
-│  │  │     ├─ Match → ShoeboxDetail                            │  │ │
-│  │  │     └─ Mismatch → ShoeboxDetailRfid                     │  │ │
-│  │  └─────────────────────────────────────────────────────────┘  │ │
-│  │  ┌─────────────────────────────────────────────────────────┐  │ │
-│  │  │  SyncDataUseCase                                        │  │ │
-│  │  │  • Get all unsynced data (Synced = 0)                   │  │ │
-│  │  │  • Upload to server                                     │  │ │
-│  │  │  • Mark as synced (Synced = 1)                          │  │ │
-│  │  │  • Return SyncStats                                     │  │ │
+│  │  │  1. Fetch RFID info from API                            │  │ │
+│  │  │  2. Deep comparison (PO, Size, Art, UPC)                │  │ │
+│  │  │  3. Save to Main (Match) or Mismatch table              │  │ │
 │  │  └─────────────────────────────────────────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-                                  ↓
-┌─────────────────────────────────────────────────────────────────────┐
+└───────────────────────────────────────┬─────────────────────────────┘
+                                        │
+┌───────────────────────────────────────▼─────────────────────────────┐
 │                          💾 DATA LAYER                               │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │                      Repositories                              │ │
 │  │  ┌──────────────────────────────────────────────────────────┐ │ │
 │  │  │  ShoeboxRepository                                       │ │ │
-│  │  │  • processScan(po, barcode) → Result<PoResponse>        │ │ │
-│  │  │  • saveToMainTable(cameraData, rfidData?)               │ │ │
-│  │  │  • saveToMismatchTable(camera, rfid, fields)            │ │ │
-│  │  │  • syncPendingData() → Result<SyncStats>                │ │ │
-│  │  │  • getLocalData(po, barcode) → PoResponse?              │ │ │
+│  │  │  • processScan(po, barcode)                             │ │ │
+│  │  │  • saveToMainTable() / saveToMismatchTable()            │ │ │
+│  │  │  • syncData() -> Direct Background Sync                  │ │ │
 │  │  └──────────────────────────────────────────────────────────┘ │ │
 │  │  ┌──────────────────────────────────────────────────────────┐ │ │
 │  │  │  RfidRepository                                          │ │ │
-│  │  │  • getRfidInfo(rfidCode) → Result<RfidData>             │ │ │
+│  │  │  • getRfidInfo(rfidCode) -> Result<RfidData>             │ │ │
 │  │  └──────────────────────────────────────────────────────────┘ │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                  ↓                                   │
-│  ┌────────────────────────────────────────────────────────────────┐ │
+│  └─────────────────────────────┬──────────────────────────────────┘ │
+│                                  │                                    │
+│  ┌─────────────────────────────▼──────────────────────────────────┐ │
 │  │                      Data Sources                              │ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐  │ │
 │  │  │ ShoeboxDao   │  │ PoApiService │  │ NetworkMonitor     │  │ │
 │  │  │ (Room)       │  │ (Retrofit)   │  │ (Connectivity)     │  │ │
 │  │  └──────────────┘  └──────────────┘  └────────────────────┘  │ │
 │  └────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
-                                  ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                      🗄️ STORAGE & NETWORK                            │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌─────────────────┐  │
-│  │  Room Database   │  │  Backend API     │  │  WorkManager    │  │
-│  │  v2 (Migration)  │  │  (Node.js)       │  │  (Background)   │  │
-│  │                  │  │                  │  │                 │  │
-│  │  • Data_Shoebox  │  │  • GET /select-po│  │  • Periodic sync│  │
-│  │    _Detail       │  │  • GET /info-rfid│  │  • Network req. │  │
-│  │                  │  │  • POST /sync/*  │  │  • Exponential  │  │
-│  │  • Data_Shoebox  │  │                  │  │    backoff      │  │
-│  │    _RFID_Detail  │  │                  │  │                 │  │
-│  │                  │  │                  │  │                 │  │
-│  │  • Data_Shoebox  │  │                  │  │                 │  │
-│  │    _Total        │  │                  │  │                 │  │
-│  └──────────────────┘  └──────────────────┘  └─────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -108,58 +86,45 @@
 ### Flow 1: Camera Scan WITH RFID Validation (Match)
 
 ```
-User          DemoFragment    BoxProcessor    RfidViewModel    UseCases         Repository      Database      API
- │                 │                │                │              │                │              │            │
- │ Scan Barcode    │                │                │              │                │              │            │
- ├────────────────>│                │                │              │                │              │            │
- │                 │  updateLogic() │                │              │                │              │            │
- │                 ├───────────────>│                │              │                │              │            │
- │                 │                │  State: VERIFYING             │                │              │            │
- │                 │<───────────────┤                │              │                │              │            │
- │                 │                │                │              │                │              │            │
- │ Scan RFID       │                │                │              │                │              │            │
- ├────────────────────────────────────────────────>│              │                │              │            │
- │                 │                │                │ onTagRead()  │                │              │            │
- │                 │                │                ├─ Store EPC   │                │              │            │
- │                 │                │                │              │                │              │            │
- │                 │ processWithRfidValidation()    │              │                │              │            │
- │                 │                │                │              │                │              │            │
- │                 │  Step 1: Process Camera Data   │              │                │              │            │
- │                 ├────────────────────────────────────────────────>│               │              │            │
- │                 │                │                │              │ processScan()  │              │            │
- │                 │                │                │              ├───────────────>│              │            │
- │                 │                │                │              │                │ GET /select-po│            │
- │                 │                │                │              │                ├─────────────────────────>│
- │                 │                │                │              │                │              │  200 OK    │
- │                 │                │                │              │                │<─────────────────────────┤
- │                 │                │                │              │                │ saveLocal()  │            │
- │                 │                │                │              │                ├─────────────>│            │
- │                 │                │                │              │                │              │            │
- │                 │                │                │              │<───────────────┤              │            │
- │                 │                │                │  Result.Success(PoResponse)  │              │            │
- │                 │<────────────────────────────────────────────────┤              │              │            │
- │                 │                │                │              │                │              │            │
- │                 │  Step 2: Validate with RFID    │              │                │              │            │
- │                 ├────────────────────────────────────────────────────────────────>│             │            │
- │                 │                │                │              │ getRfidInfo()  │              │            │
- │                 │                │                │              │                ├─────────────────────────>│
- │                 │                │                │              │                │  GET /info-rfid          │
- │                 │                │                │              │                │<─────────────────────────┤
- │                 │                │                │              │                │  200 OK (DataRfid)       │
- │                 │                │                │              │ compareData()  │              │            │
- │                 │                │                │              │ ✅ MATCH!      │              │            │
- │                 │                │                │              │ saveToMain()   │              │            │
- │                 │                │                │              ├───────────────>│              │            │
- │                 │                │                │              │                │ insertDetail()│            │
- │                 │                │                │              │                ├─────────────>│            │
- │                 │                │                │              │                │  Synced = 0  │            │
- │                 │                │                │  ValidationResult.Success     │              │            │
- │                 │<────────────────────────────────────────────────┤ (isMatch=true)│              │            │
- │                 │                │                │              │                │              │            │
- │  showSuccess() │                │                │              │                │              │            │
- │  "✅ Match!"    │                │                │              │                │              │            │
- │<────────────────┤                │                │              │                │              │            │
- │                 │                │                │              │                │              │            │
+User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/UseCase   API (RFID)      DB
+ │               │               │              │             │               │              │           │
+ │ Box detected  │               │              │             │               │              │           │
+ ├──────────────>│ updateLogic() │              │             │               │              │           │
+ │               ├──────────────>│ State:       │             │               │              │           │
+ │               │               │ SCANNING     │             │               │              │           │
+ │ Decoded OK    │               │              │             │               │              │           │
+ │               │<──────────────┤ (Tracking)   │             │               │              │           │
+ │               │               │              │             │               │              │           │
+ │               │ getPoDetails()│              │             │               │              │           │
+ │               ├─────────────────────────────>│             │               │              │           │
+ │               │   200 OK      │              │             │               │              │           │
+ │               │<─────────────────────────────┤             │               │              │           │
+ │               │               │              │             │               │              │           │
+ │               │ 🕒 Start 500ms RFID Window   │             │               │              │           │
+ │               ├───────────────────────────────────────────>│               │              │           │
+ │               │               │              │             │               │              │           │
+ │ Tags found    │               │              │             │   onTagRead() │              │           │
+ │               │<───────────────────────────────────────────┤               │              │           │
+ │               │               │              │             │               │              │           │
+ │ 🕒 Window End │               │ saveScanData(setOfRFIDs)     │             │               │              │
+ │               ├───────────────────────────────────────────>│ invoke()      │              │           │
+ │               │               │              │             │               │ getRfidInfo()│           │
+ │               │               │              │             │               ├─────────────>│           │
+ │               │               │              │             │               │   200 OK     │           │
+ │               │               │              │             │               │<─────────────┤           │
+ │               │               │              │             │               │              │           │
+ │               │               │              │             │               │ compareData()│           │
+ │               │               │              │             │               │ ✅ MATCH    │           │
+ │               │               │              │             │               │ saveMain()   │           │
+ │               │               │              │             │               ├─────────────────────────>│
+ │               │               │              │             │               │              │           │
+ │               │  ValidationResult: SUCCESS   │             │               │              │           │
+ │               │<───────────────────────────────────────────┤               │              │           │
+ │               │               │              │             │               │              │           │
+ │ Show Success  │ onApiVerif(T) │              │             │               │              │           │
+ │               ├──────────────>│ State:       │             │               │              │           │
+ │<──────────────┤               │ DECODED      │             │               │              │           │
+ │               │               │              │             │               │              │           │
 ```
 
 ### Flow 2: Camera Scan WITH RFID Validation (Mismatch)
@@ -167,56 +132,44 @@ User          DemoFragment    BoxProcessor    RfidViewModel    UseCases         
 ```
 [Similar to Flow 1 until compareData()]
 
- │                 │                │                │              │ compareData()  │              │            │
- │                 │                │                │              │ ⚠️ MISMATCH   │              │            │
- │                 │                │                │              │ Fields: [PO]   │              │            │
- │                 │                │                │              │ saveToMismatch()│             │            │
- │                 │                │                │              ├───────────────>│              │            │
- │                 │                │                │              │                │ insertRfidDetail()       │
- │                 │                │                │              │                ├─────────────>│            │
- │                 │                │                │              │                │  Camera + RFID data      │
- │                 │                │                │              │                │  MismatchFields: ["PO"]  │
- │                 │                │                │              │                │  Synced = 0  │            │
- │                 │                │                │  ValidationResult.Success     │              │            │
- │                 │<────────────────────────────────────────────────┤(isMatch=false)│              │            │
- │                 │                │                │              │                │              │            │
- │  showWarning() │                │                │              │                │              │            │
- │  "⚠️ Mismatch" │                │                │              │                │              │            │
- │<────────────────┤                │                │              │                │              │            │
+ │               │               │              │             │               │ compareData()│           │
+ │               │               │              │             │               │ ⚠️ MISMATCH │           │
+ │               │               │              │             │               │ saveMismatch()           │
+ │               │               │              │             │               ├─────────────────────────>│
+ │               │               │              │             │               │ (Store both Cam & RFID)  │
+ │               │  ValidationResult: MISMATCH  │             │               │                          │
+ │               │<───────────────────────────────────────────┤               │                          │
+ │               │               │              │             │               │                          │
+ │ Show Warning  │ onApiVerif(T) │              │             │               │                          │
+ │               ├──────────────>│ State:       │             │               │                          │
+ │<──────────────┤               │ DECODED      │             │               │                          │
+ │               │               │              │             │               │                          │
 ```
 
-### Flow 3: Camera Scan WITHOUT RFID
+### Flow 3: Camera Scan WITHOUT RFID (Reader Offline or No Tags)
 
 ```
-User          DemoFragment    BoxProcessor    UseCases         Repository      Database      API
- │                 │                │              │                │              │            │
- │ Scan Barcode    │                │              │                │              │            │
- ├────────────────>│                │              │                │              │            │
- │                 │  updateLogic() │              │                │              │            │
- │                 ├───────────────>│              │                │              │            │
- │                 │  State: VERIFYING             │                │              │            │
- │                 │<───────────────┤              │                │              │            │
- │                 │                │              │                │              │            │
- │                 │ (No RFID scan - timeout)      │                │              │            │
- │                 │                │              │                │              │            │
- │                 │ processWithoutRfid()          │                │              │            │
- │                 ├────────────────────────────────>│               │              │            │
- │                 │                │              │ processScan()  │              │            │
- │                 │                │              ├───────────────>│              │            │
- │                 │                │              │                │ GET /select-po│            │
- │                 │                │              │                ├─────────────────────────>│
- │                 │                │              │                │<─────────────────────────┤
- │                 │                │              │                │  200 OK      │            │
- │                 │                │  Result.Success               │              │            │
- │                 │<────────────────────────────────┤              │              │            │
- │                 │  saveToMainTable(cameraData, null)            │              │            │
- │                 ├───────────────────────────────────────────────>│              │            │
- │                 │                │              │                │ insertDetail()│            │
- │                 │                │              │                ├─────────────>│            │
- │                 │                │              │                │  Synced = 0  │            │
- │  showSuccess() │                │              │                │              │            │
- │  "✅ Saved"     │                │              │                │              │            │
- │<────────────────┤                │              │                │              │            │
+User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/UseCase       DB
+ │               │               │              │             │               │              │
+ │ Decoded OK    │               │              │             │               │              │
+ │               │ getPoDetails()│              │             │               │              │
+ │               ├─────────────────────────────>│             │               │              │
+ │               │   200 OK      │              │             │               │              │
+ │               │<─────────────────────────────┤             │               │              │
+ │               │               │              │             │               │              │
+ │               │ 🕒 Start 2s RFID Window      │             │               │              │
+ │               ├───────────────────────────────────────────>│               │              │
+ │               │               │              │             │               │              │
+ │ 🕒 Window End │ (No tags)     │              │             │               │              │
+ │               │ saveScanData(emptySet)       │             │               │              │
+ │               ├───────────────────────────────────────────>│ invoke()      │              │
+ │               │               │              │             │               │ No RFIDs ->  │
+ │               │               │              │             │               │ saveMain()   │
+ │               │               │              │             │               ├─────────────>│
+ │               │               │              │             │               │              │
+ │ Show Success  │ onApiVerif(T) │              │             │               │              │
+ │               ├──────────────>│ State:       │             │               │              │
+ │<──────────────┤               │ DECODED      │             │               │              │
 ```
 
 ### Flow 4: Offline Mode (API Failure)
@@ -227,7 +180,7 @@ User          DemoFragment    UseCases         Repository      Database      API
  │ Scan Barcode    │              │                │              │            │
  ├────────────────>│              │                │              │            │
  │                 │ processScan()│                │              │            │
- │                 ├─────────────>│                │              │            │
+ │                 ├─────────────>│              │            │
  │                 │              │ processScan()  │              │            │
  │                 │              ├───────────────>│              │            │
  │                 │              │                │ GET /select-po│            │
@@ -313,127 +266,81 @@ WorkManager    SyncWorker    SyncUseCase    Repository      Database      API
 └─────────────────────────────────────────────────────────────┘
                             ↑
                             │ Used when:
-                            │ • No RFID scan
-                            │ • RFID matches camera data
+                            │ • No RFID tags found in scan window
+                            │ • Best RFID match matches Camera data
                             │
 ┌─────────────────────────────────────────────────────────────┐
 │         Data_Shoebox_RFID_Detail (Mismatch Table)           │
 │─────────────────────────────────────────────────────────────│
 │ id (PK)              │ BIGINT AUTO_INCREMENT                │
 │                                                             │
-│ ┌─── Camera Data ───────────────────────────────────────┐  │
-│ │ RY                 │ TEXT                             │  │
-│ │ Size               │ TEXT                             │  │
-│ │ PO                 │ TEXT                             │  │
-│ │ UPC                │ TEXT                             │  │
-│ │ Qty                │ INT                              │  │
-│ │ Article            │ TEXT                             │  │
+│ ┌─── Camera Snapshot ───────────────────────────────────┐  │
+│ │ RY / Size / PO / UPC / Qty / Article                  │  │
 │ └───────────────────────────────────────────────────────┘  │
 │                                                             │
-│ ┌─── RFID Data ─────────────────────────────────────────┐  │
-│ │ RFID               │ TEXT                             │  │
-│ │ Size_RFID          │ TEXT                             │  │
-│ │ PO_RFID            │ TEXT                             │  │
-│ │ UPC_RFID           │ TEXT                             │  │
-│ │ Article_RFID       │ TEXT                             │  │
-│ │ RY_RFID            │ TEXT                             │  │
+│ ┌─── RFID Snapshot (Best EPC) ──────────────────────────┐  │
+│ │ RFID / Size_RFID / PO_RFID / UPC_RFID / Article_RFID  │    │
 │ └───────────────────────────────────────────────────────┘  │
 │                                                             │
 │ MismatchFields       │ TEXT (JSON: ["PO", "Size"])         │
-│ DateScan             │ TEXT (yyyy-MM-dd HH:mm:ss)           │
-│ Modify               │ TEXT                                 │
-│ ShoeImage            │ TEXT                                 │
-│ User_Serial_Key      │ TEXT                                 │
-│ Line                 │ TEXT                                 │
-│ Synced               │ INT (0 = No, 1 = Yes)               │
+│ DateScan             │ TEXT                                 │
+│ Synced               │ INT                                  │
 └─────────────────────────────────────────────────────────────┘
                             ↑
                             │ Used when:
-                            │ • RFID does NOT match camera data
+                            │ • Best RFID tag does NOT match camera data
                             │
 ┌─────────────────────────────────────────────────────────────┐
-│             Data_Shoebox_Total (Summary Table)              │
+│             Data_Shoebox_Total (Current Day Summary)        │
 │─────────────────────────────────────────────────────────────│
-│ id (PK)              │ BIGINT AUTO_INCREMENT                │
-│ RY                   │ TEXT                                 │
-│ Size                 │ TEXT                                 │
-│ PO                   │ TEXT                                 │
-│ UPC                  │ TEXT                                 │
-│ Total_Qty_Scan       │ INT                                  │
-│ Total_Qty_ERP        │ INT                                  │
-│ Article              │ TEXT                                 │
-│ DateScan             │ TEXT                                 │
-│ Modify               │ TEXT                                 │
-│ User_Serial_Key      │ TEXT                                 │
-│ Line                 │ TEXT                                 │
-│ Synced               │ INT (0 = No, 1 = Yes)               │
+│ PO / UPC / Size / DateScan / Total_Qty_Scan / Total_Qty_ERP │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔄 State Machine Diagram
+## 🔄 State Machine Diagrams
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│              BoxProcessor State Machine                     │
-└─────────────────────────────────────────────────────────────┘
+### BoxProcessor State Machine (Processing Logic)
+This state machine runs at the frame-processing level (~20 FPS).
 
-    ┌────────┐
-    │  IDLE  │ ◄──────────────────────────────┐
-    └────┬───┘                                 │
-         │ Box detected                        │
-         ↓                                     │
-    ┌─────────┐                                │
-    │SCANNING │                          ┌─────┴────┐
-    └────┬────┘                          │RESETTING │
-         │ Barcode decoded               └──────────┘
-         ↓                                     ↑
-    ┌──────────┐                               │
-    │ DECODED  │                               │
-    └────┬─────┘                               │
-         │ PO extracted                        │
-         ↓                                     │
-    ┌───────────┐                              │
-    │VERIFYING  │──────────────────────────────┤
-    └───────────┘  Verification complete       │
-         │         (with or without RFID)      │
-         │                                     │
-         └─────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> SCANNING : Presence Detected
+    
+    SCANNING --> VERIFYING : Barcode + PO Found
+    SCANNING --> IDLE : Timeout (Config.SCAN_TIMEOUT_MS)
+    
+    VERIFYING --> DECODED : API Success + Validation Done
+    VERIFYING --> SCANNING : API Error / Data Rejected
+    VERIFYING --> IDLE : Tracking Lost / New Box Detected
+    
+    DECODED --> IDLE : Tracking Lost / New Box Detected
+    
+    RESETTING --> IDLE : Auto Reset
 ```
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│           ProcessingState State Machine (UI)                │
-└─────────────────────────────────────────────────────────────┘
+### UI Processing State (MainViewModel)
+This state transition is driven by `liveData` observations.
 
-    ┌────────┐
-    │  Idle  │ ◄──────────────────────┐
-    └────┬───┘                        │
-         │ Start processing           │
-         ↓                            │
-    ┌────────────┐                    │
-    │Processing  │                    │
-    └────┬───────┘                    │
-         │                            │
-         │                            │
-    ┌────┴────┬───────────────────────┴─────────┐
-    │         │                                  │
-    ↓         ↓                                  ↓
-┌─────────┐ ┌─────────┐                    ┌────────┐
-│Success  │ │Warning  │                    │Error   │
-│         │ │(Mismatch│                    │        │
-└─────────┘ └─────────┘                    └────────┘
-    │         │                                  │
-    │         │                                  │
-    └─────────┴──────────────────────────────────┘
-                        │
-                        ↓
-                   ┌────────┐
-                   │  Idle  │
-                   └────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> READY : App Start / IDLE
+    READY --> PROCESSING : Barcode Detected
+    
+    state "PROCESSING (API + RFID Validation)" as PROC
+    PROCESSING --> PROC : 2s RFID Scan Window
+    
+    PROC --> SUCCESS : Match / Saved
+    PROC --> WARNING : Mismatch / Logged
+    PROC --> ERROR : API Failure / Network Error
+    
+    SUCCESS --> READY : After Delay / Reset
+    WARNING --> READY : After Delay / Reset
+    ERROR --> READY : User Retry / Reset
 ```
 
 ---
 
-**📌 These diagrams provide a visual guide to understanding the architecture, data flows, and state transitions in the RFID Validation System.**
+**📌 These diagrams provide a comprehensive guide to the current system state, ensuring technical alignment between documentation and the Kotlin implementation.**
