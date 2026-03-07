@@ -1027,15 +1027,6 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             if (localData != null) {
                 Log.d(TAG, "Fallback Success: Loaded local data")
 
-                if (rfidScanningStarted) {
-                    Log.i(TAG, "Fallback Success -> Stopping RFID scan before PO comparison.")
-                    rfidScanningStarted = false
-                    if (::rfidConnectionManager.isInitialized) {
-                        rfidConnectionManager.stopScanning()
-                    }
-                    rfidViewModel.setScanning(false)
-                }
-
                 currentApiResponse = localData
                 rfidViewModel.setCurrentCameraResponse(localData)
 
