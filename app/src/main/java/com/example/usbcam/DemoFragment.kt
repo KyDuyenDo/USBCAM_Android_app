@@ -832,9 +832,11 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     )
                     rfidViewModel.clearRfidData()
 
-                    if (::rfidConnectionManager.isInitialized) {
-                        rfidConnectionManager.clearDeviceState()
-                    }
+                    // REMOVED clearDeviceState() -- this hardware command may cause the module
+                    // to ignore the next startScanning request and result in empty reads.
+                    // if (::rfidConnectionManager.isInitialized) {
+                    //    rfidConnectionManager.clearDeviceState()
+                    // }
                 }
             }
 
