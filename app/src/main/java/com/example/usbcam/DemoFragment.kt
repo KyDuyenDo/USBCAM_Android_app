@@ -269,13 +269,6 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                     )
                                     .show()
                             rfidViewModel.setConnected(true)
-
-                            // Start scanning only once after connection
-                            if (!rfidScanningStarted) {
-                                rfidScanningStarted = true
-                                rfidConnectionManager.startScanning()
-                                rfidViewModel.setScanning(true)
-                            }
                         }
                     }
 
@@ -850,6 +843,29 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 lastState = state
             }
 
+            // 🔹 REQUIREMENT: Only start scanning when motion is physically detected (SCANNING
+            // state)
+            if (state == AppState.SCANNING && !rfidScanningStarted) {
+                if (rfidViewModel.isConnected.value == true) {
+                    Log.i(TAG, "Motion Detected (SCANNING State) -> Starting RFID sequence.")
+                    rfidScanningStarted = true
+                    if (::rfidConnectionManager.isInitialized) {
+                        rfidConnectionManager.startScanning()
+                    }
+                    rfidViewModel.setScanning(true)
+                }
+            }
+
+            // 🔹 REQUIREMENT: Stop scanning if system goes back to IDLE (or resets)
+            if ((state == AppState.IDLE || state == AppState.RESETTING) && rfidScanningStarted) {
+                Log.i(TAG, "System $state -> Stopping RFID sequence.")
+                rfidScanningStarted = false
+                if (::rfidConnectionManager.isInitialized) {
+                    rfidConnectionManager.stopScanning()
+                }
+                rfidViewModel.setScanning(false)
+            }
+
             mViewBinding?.let { binding ->
                 val isBusy = state == AppState.SCANNING
                 binding.pbMotion.visibility = if (isBusy) View.VISIBLE else View.GONE
@@ -979,13 +995,12 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                     currentApiResponse = body
                                     rfidViewModel.setCurrentCameraResponse(body)
 
-                                    // 🔖 Get scanned RFID code from RfidViewModel
-                                    val scannedRfid =
-                                            rfidViewModel.lastEpc.value?.takeIf { it.isNotBlank() }
+                                    // 🔖 Get all accumulated RFID codes from RfidViewModel
+                                    val scannedRfids = rfidViewModel.scannedEpcs.toSet()
 
-                                    // Pass RFID code to validation logic (proceeds to call and
-                                    // compare the PO)
-                                    viewModel.saveScanData(po, barcode, body, scannedRfid)
+                                    // Pass RFID codes to validation logic (proceeds to call and
+                                    // compare the PO for each tag)
+                                    viewModel.saveScanData(po, barcode, body, scannedRfids)
                                     boxProcessor.onApiVerification(true)
                                 } else {
                                     // Fallback: API returned Check for local data
@@ -1011,9 +1026,22 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             val localData = viewModel.getLocalData(po, barcode)
             if (localData != null) {
                 Log.d(TAG, "Fallback Success: Loaded local data")
+
+                if (rfidScanningStarted) {
+                    Log.i(TAG, "Fallback Success -> Stopping RFID scan before PO comparison.")
+                    rfidScanningStarted = false
+                    if (::rfidConnectionManager.isInitialized) {
+                        rfidConnectionManager.stopScanning()
+                    }
+                    rfidViewModel.setScanning(false)
+                }
+
                 currentApiResponse = localData
                 rfidViewModel.setCurrentCameraResponse(localData)
-                // Just refresh UI, no need to save again as it's already in DB
+
+                val scannedRfids = rfidViewModel.scannedEpcs.toSet()
+                viewModel.saveScanData(po, barcode, localData, scannedRfids)
+
                 viewModel.loadAllTimeSlots()
                 viewModel.loadTotal()
                 boxProcessor.onApiVerification(true)

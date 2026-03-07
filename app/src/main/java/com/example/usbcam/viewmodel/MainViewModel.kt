@@ -30,8 +30,8 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.launch
 
 class MainViewModel(
-    private val repository: ShoeboxRepository,
-    private val processCameraWithRfidUseCase: ProcessCameraWithRfidUseCase
+        private val repository: ShoeboxRepository,
+        private val processCameraWithRfidUseCase: ProcessCameraWithRfidUseCase
 ) : ViewModel() {
 
     private val _totalScan = MutableLiveData<Int>()
@@ -44,7 +44,8 @@ class MainViewModel(
     val targetData: LiveData<TargetData> = _targetData
 
     // Line dây chuyền được user chọn (default: LHGG4G01)
-    private val _selectedLine = MutableLiveData<String>(com.example.usbcam.utils.LinePreferences.DEFAULT_LINE)
+    private val _selectedLine =
+            MutableLiveData<String>(com.example.usbcam.utils.LinePreferences.DEFAULT_LINE)
     val selectedLine: LiveData<String> = _selectedLine
 
     // UI State for scan result
@@ -71,9 +72,7 @@ class MainViewModel(
         _isCameraEnabled.postValue(enabled)
     }
 
-    /**
-     * Cập nhật line được chọn và tự động reload target + time slots
-     */
+    /** Cập nhật line được chọn và tự động reload target + time slots */
     fun setSelectedLine(line: String) {
         _selectedLine.value = line
         loadAllTimeSlots()
@@ -113,14 +112,19 @@ class MainViewModel(
         viewModelScope.launch {
             val result = repository.processScan(po, barcode, _selectedLine.value)
             // Unwrap Result to get PoResponse
-            val poResponse = when (result) {
-                is com.example.usbcam.data.model.Result.Success -> result.data
-                is com.example.usbcam.data.model.Result.Error -> {
-                    Log.e("MainViewModel", "processScan failed: ${result.message}", result.exception)
-                    null
-                }
-                else -> null
-            }
+            val poResponse =
+                    when (result) {
+                        is com.example.usbcam.data.model.Result.Success -> result.data
+                        is com.example.usbcam.data.model.Result.Error -> {
+                            Log.e(
+                                    "MainViewModel",
+                                    "processScan failed: ${result.message}",
+                                    result.exception
+                            )
+                            null
+                        }
+                        else -> null
+                    }
             _scanResult.postValue(poResponse)
             // loadDataForCurrentTimeSlot()
             loadAllTimeSlots()
@@ -131,17 +135,29 @@ class MainViewModel(
         return repository.getLocalPoResponse(po, barcode)
     }
 
-    fun saveScanData(po: String, barcode: String, data: PoResponse, scannedRfidCode: String? = null) {
-        Log.d("saveScanData", "API Success: $data, RFID: $scannedRfidCode")
+    fun saveScanData(
+            po: String,
+            barcode: String,
+            data: PoResponse,
+            scannedRfidCodes: Set<String> = emptySet()
+    ) {
+        Log.d("saveScanData", "API Success: $data, RFIDs: ${scannedRfidCodes.size}")
         val selectedLine = _selectedLine.value
         viewModelScope.launch {
             try {
                 // 🔹 NEW LOGIC: Check for scanned RFID code (from RFID scanner)
-                val result = processCameraWithRfidUseCase.invoke(po, barcode, data, scannedRfidCode, selectedLine)
-                
+                val result =
+                        processCameraWithRfidUseCase.invoke(
+                                po,
+                                barcode,
+                                data,
+                                scannedRfidCodes,
+                                selectedLine
+                        )
+
                 // Post result for UI observation
                 _validationResult.postValue(result)
-                
+
                 when (result) {
                     is ValidationResult.Success -> {
                         Log.i("MainViewModel", "✅ Scan processed: ${result.message}")
@@ -150,24 +166,26 @@ class MainViewModel(
                         loadTotal()
                     }
                     is ValidationResult.Error -> {
-                        Log.e("MainViewModel", "❌ Validation error: ${result.message}", result.exception)
+                        Log.e(
+                                "MainViewModel",
+                                "❌ Validation error: ${result.message}",
+                                result.exception
+                        )
                     }
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Error in saveScanData", e)
                 _validationResult.postValue(
-                    ValidationResult.Error(
-                        message = "Failed to save: ${e.message}",
-                        exception = e
-                    )
+                        ValidationResult.Error(
+                                message = "Failed to save: ${e.message}",
+                                exception = e
+                        )
                 )
             }
         }
     }
-    
-    /**
-     * Clear validation result after it's been displayed
-     */
+
+    /** Clear validation result after it's been displayed */
     fun clearValidationResult() {
         _validationResult.postValue(null)
     }
@@ -175,15 +193,20 @@ class MainViewModel(
     suspend fun verifyCode(po: String, barcode: String): PoResponse? {
         val result = repository.processScan(po, barcode, _selectedLine.value)
         // Unwrap Result to get PoResponse
-        val poResponse = when (result) {
-            is com.example.usbcam.data.model.Result.Success -> result.data
-            is com.example.usbcam.data.model.Result.Error -> {
-                Log.e("MainViewModel", "verifyCode failed: ${result.message}", result.exception)
-                null
-            }
-            else -> null
-        }
-        
+        val poResponse =
+                when (result) {
+                    is com.example.usbcam.data.model.Result.Success -> result.data
+                    is com.example.usbcam.data.model.Result.Error -> {
+                        Log.e(
+                                "MainViewModel",
+                                "verifyCode failed: ${result.message}",
+                                result.exception
+                        )
+                        null
+                    }
+                    else -> null
+                }
+
         if (poResponse != null) {
             // If we found data (either from API or Local), existing Logic suggests we might want to
             // refresh UI
@@ -305,19 +328,17 @@ class MainViewModelFactory(private val application: Application) : ViewModelProv
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             val database = AppDatabase.getDatabase(application.applicationContext)
             val apiService = PoApiService.create()
-            
+
             // Setup repositories
             val shoeboxRepository = ShoeboxRepository(database.shoeboxDao(), apiService)
             val rfidRepository = RfidRepository(apiService)
-            
+
             // Setup use cases
             val validateWithRfidUseCase = ValidateWithRfidUseCase(rfidRepository, shoeboxRepository)
-            val processCameraWithRfidUseCase = ProcessCameraWithRfidUseCase(
-                shoeboxRepository,
-                validateWithRfidUseCase
-            )
-            
-            @Suppress("UNCHECKED_CAST") 
+            val processCameraWithRfidUseCase =
+                    ProcessCameraWithRfidUseCase(shoeboxRepository, validateWithRfidUseCase)
+
+            @Suppress("UNCHECKED_CAST")
             return MainViewModel(shoeboxRepository, processCameraWithRfidUseCase) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
