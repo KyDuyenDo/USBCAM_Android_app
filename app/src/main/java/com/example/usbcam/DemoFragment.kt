@@ -269,6 +269,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                     )
                                     .show()
                             rfidViewModel.setConnected(true)
+                            com.example.usbcam.utils.DeviceStatusTracker.reportStatus(requireContext())
                         }
                     }
 
@@ -276,6 +277,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                         activity?.runOnUiThread {
                             rfidViewModel.setConnected(false)
                             rfidScanningStarted = false // Reset flag on disconnect
+                            com.example.usbcam.utils.DeviceStatusTracker.reportStatus(requireContext())
                         }
                     }
 
@@ -529,6 +531,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         }
 
         viewModel.setCameraSignalError(null)
+        com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = false
+        com.example.usbcam.utils.DeviceStatusTracker.reportStatus(requireContext())
     }
 
     private fun startSignalDetection() {
@@ -554,15 +558,18 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
                             // Auto-shutdown requirement
                             if (Config.AUTO_DISABLE_ON_SIGNAL_LOSS) {
-                                activity?.runOnUiThread {
+                            activity?.runOnUiThread {
                                     mViewBinding?.swCamera?.isChecked = false
                                 }
                             }
+                            com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = false
+                            com.example.usbcam.utils.DeviceStatusTracker.reportStatus(requireContext())
 
                             // Exit detection loop after shutdown
                             return@launch
                         } else {
                             viewModel.setCameraSignalError(null)
+                            com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = true
                         }
                     }
                 }
@@ -636,6 +643,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 cameraInstance = self // Store camera reference
                 addPreviewDataCallBack(this)
                 startProcessingThread()
+                com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = true
+                com.example.usbcam.utils.DeviceStatusTracker.reportStatus(requireContext())
             }
             ICameraStateCallBack.State.CLOSED -> {
                 cameraInstance = null
@@ -666,6 +675,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         // FIX 5: Don't process data if fragment is detached or camera is stopping
         if (data == null || !isAdded || isCameraStopping) return
         lastFrameTime = System.currentTimeMillis() // Signal detected
+        com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = true
 
         // OPTIMIZATION 3: Only initialize YUV fallback if needed
         if (frameWidth != width || frameHeight != height) {

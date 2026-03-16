@@ -45,6 +45,11 @@ interface PoApiService {
             @retrofit2.http.Body rfidDetail: com.example.usbcam.data.model.ShoeboxDetailRfid
     ): retrofit2.Response<Void>
 
+    @retrofit2.http.POST("api/device-status")
+    suspend fun reportDeviceStatus(
+        @retrofit2.http.Body status: DeviceStatusRequest
+    ): retrofit2.Response<Void>
+
     companion object {
         private const val BASE_URL = "http://192.168.30.101:3000/"
 

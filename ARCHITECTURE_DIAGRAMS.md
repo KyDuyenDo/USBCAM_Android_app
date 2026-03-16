@@ -242,6 +242,35 @@ WorkManager    SyncWorker    SyncUseCase    Repository      Database      API
     │              │              │              │              │            │
 ```
 
+### Flow 6: Camera Scan WITH RFID (But RFID API returns No Data)
+
+```
+User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/UseCase   API (RFID)      DB
+ │               │               │              │             │               │              │           │
+ │ Box detected  │               │              │             │               │              │           │
+ ├──────────────>│ updateLogic() │              │             │               │              │           │
+ │               ├──────────────>│ State:       │             │               │              │           │
+ │               │               │ SCANNING     │             │               │              │           │
+ │ Tags found    │               │              │             │   onTagRead() │              │           │
+ │               │<───────────────────────────────────────────┤               │              │           │
+ │               │               │              │             │               │              │           │
+ │ Window End    │               │ saveScanData(setOfRFIDs)     │             │               │              │
+ │               ├───────────────────────────────────────────>│ invoke()      │              │           │
+ │               │               │              │             │               │ getRfidInfo()│           │
+ │               │               │              │             │               ├─────────────>│           │
+ │               │               │              │             │               │  ❌ 404/Empty│           │
+ │               │               │              │             │               │<─────────────┤           │
+ │               │               │              │             │               │              │           │
+ │               │               │              │             │               │ saveMain()   │ (Normal save)
+ │               │               │              │             │               ├─────────────────────────>│
+ │               │               │              │             │               │ saveMismatch() (No RFID info)
+ │               │               │              │             │               ├─────────────────────────>│
+ │               │               │              │             │               │              │           │
+ │ Show Warning  │ ValidationResult: SUCCESS (isMatch=F)      │               │              │           │
+ │ (No RFID info)│<───────────────────────────────────────────┤               │              │           │
+ │               │               │              │             │               │              │           │
+```
+
 ---
 
 ## 📊 Database Schema Diagram

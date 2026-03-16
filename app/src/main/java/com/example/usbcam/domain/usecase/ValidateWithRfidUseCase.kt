@@ -84,10 +84,26 @@ class ValidateWithRfidUseCase(
                     }
                 }
                 is Result.Error -> {
-                    Log.e(TAG, "Failed to fetch RFID data ($rfidCode): ${rfidResult.message}", rfidResult.exception)
-                    ValidationResult.Error(
-                        message = "RFID API Error ($rfidCode): ${rfidResult.message}",
-                        exception = rfidResult.exception
+                    Log.e(TAG, "Failed to fetch RFID data ($rfidCode): ${rfidResult.message}. Saving as mismatch but allowing main record.")
+                    
+                    // 🔹 THEO YÊU CẦU: Lưu vào bảng chính (như không có RFID) và bảng lỗi
+                    
+                    // 1. Lưu vào bảng chính (Ghi nhận có scan hộp thành công)
+                    shoeboxRepository.saveToMainTable(cameraData, null, selectedLine, erpTarget)
+                    
+                    // 2. Lưu vào bảng lỗi (Mismatch) với mã RFID và thông báo không tìm thấy dữ liệu
+                    shoeboxRepository.saveToMismatchTable(
+                        cameraData = cameraData,
+                        rfidData = RfidData(rfidCode = rfidCode, null, null, null, null, null, null, null),
+                        mismatchFields = listOf("RFID_API_NO_DATA"),
+                        selectedLine = selectedLine
+                    )
+                    
+                    ValidationResult.Success(
+                        isMatch = false,
+                        message = "⚠️ No info for RFID $rfidCode. Record saved and logged.",
+                        rfidData = null,
+                        mismatchFields = listOf("RFID_API_NO_DATA")
                     )
                 }
                 is Result.Loading -> {

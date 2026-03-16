@@ -382,7 +382,7 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
      */
     suspend fun saveToMismatchTable(
         cameraData: com.example.usbcam.data.model.CameraData,
-        rfidData: com.example.usbcam.data.model.RfidData,
+        rfidData: com.example.usbcam.data.model.RfidData? = null,
         mismatchFields: List<String>,
         selectedLine: String? = null
     ) {
@@ -398,12 +398,12 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                 Qty = cameraData.qty,
                 Article = cameraData.article,
                 // RFID data
-                RFID = rfidData.rfidCode,
-                Size_RFID = rfidData.size,
-                PO_RFID = rfidData.po,
-                UPC_RFID = rfidData.upc,
-                Article_RFID = rfidData.article,
-                RY_RFID = rfidData.ry,
+                RFID = rfidData?.rfidCode,
+                Size_RFID = rfidData?.size,
+                PO_RFID = rfidData?.po,
+                UPC_RFID = rfidData?.upc,
+                Article_RFID = rfidData?.article,
+                RY_RFID = rfidData?.ry,
                 // Mismatch tracking
                 MismatchFields = com.google.gson.Gson().toJson(mismatchFields),
                 // Metadata
