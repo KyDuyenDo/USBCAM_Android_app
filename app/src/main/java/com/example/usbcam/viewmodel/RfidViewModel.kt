@@ -9,6 +9,8 @@ import com.example.usbcam.BoxProcessor
 import com.example.usbcam.api.DataRfid
 import com.example.usbcam.api.PoApiService
 import com.example.usbcam.api.PoResponse
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -28,6 +30,16 @@ class RfidViewModel(
         private val validateWithRfidUseCase:
                 com.example.usbcam.domain.usecase.ValidateWithRfidUseCase
 ) : AndroidViewModel(application) {
+
+    init {
+        // 🔹 Observe validation events from the shared UseCase instance
+        // This allows the UseCase to "notify" this ViewModel directly when validation happens elsewhere (e.g. in MainViewModel)
+        viewModelScope.launch {
+            validateWithRfidUseCase.events.collect { result ->
+                updateFromValidationResult(result)
+            }
+        }
+    }
 
     companion object {
         private const val TAG = "RfidViewModel"
@@ -392,7 +404,7 @@ class RfidViewModelFactory(private val application: Application) :
                     )
             val rfidRepository = com.example.usbcam.repository.RfidRepository(apiService)
             val validateWithRfidUseCase =
-                    com.example.usbcam.domain.usecase.ValidateWithRfidUseCase(
+                    com.example.usbcam.domain.usecase.ValidateWithRfidUseCase.getInstance(
                             rfidRepository,
                             shoeboxRepository
                     )

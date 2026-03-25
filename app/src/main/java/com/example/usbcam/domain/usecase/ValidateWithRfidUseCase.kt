@@ -10,6 +10,8 @@ import com.example.usbcam.data.model.ValidationResult
 import com.example.usbcam.repository.RfidRepository
 import com.example.usbcam.repository.ShoeboxRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
 
 /**
@@ -24,8 +26,23 @@ class ValidateWithRfidUseCase(
     private val rfidRepository: RfidRepository,
     private val shoeboxRepository: ShoeboxRepository
 ) {
+    // 🔹 SharedFlow to allow ViewModels to observe validation results globally
+    private val _events = MutableSharedFlow<ValidationResult.Success>()
+    val events = _events.asSharedFlow()
     companion object {
         private const val TAG = "ValidateWithRfidUseCase"
+
+        @Volatile
+        private var instance: ValidateWithRfidUseCase? = null
+
+        fun getInstance(
+            rfidRepository: RfidRepository,
+            shoeboxRepository: ShoeboxRepository
+        ): ValidateWithRfidUseCase {
+            return instance ?: synchronized(this) {
+                instance ?: ValidateWithRfidUseCase(rfidRepository, shoeboxRepository).also { instance = it }
+            }
+        }
     }
 
     suspend operator fun invoke(
@@ -54,11 +71,13 @@ class ValidateWithRfidUseCase(
                             Log.i(TAG, "Data matches! Saving to main table")
                             shoeboxRepository.saveToMainTable(cameraData, rfidData, selectedLine, erpTarget)
                             
-                            ValidationResult.Success(
+                            val result = ValidationResult.Success(
                                 isMatch = true,
                                 message = "✅ RFID Match ($rfidCode) - Data saved successfully",
                                 rfidData = rfidData
                             )
+                            _events.emit(result)
+                            result
                         }
                         is ComparisonResult.Mismatch -> {
                             // MISMATCH → Save to RFID detail table
@@ -74,12 +93,14 @@ class ValidateWithRfidUseCase(
                                 "${it.field}: Cam(${it.cameraValue}) != Rfid(${it.rfidValue})" 
                             }
                             
-                            ValidationResult.Success(
+                            val result = ValidationResult.Success(
                                 isMatch = false,
-                                message = "⚠️ RFID Mismatch ($rfidCode)\n$mismatchInfo",
+                                message = "RFID Mismatch ($rfidCode)\n$mismatchInfo",
                                 rfidData = rfidData,
                                 mismatchFields = comparisonResult.details.map { it.field }
                             )
+                            _events.emit(result)
+                            result
                         }
                     }
                 }
@@ -94,17 +115,20 @@ class ValidateWithRfidUseCase(
                     // 2. Lưu vào bảng lỗi (Mismatch) với mã RFID và thông báo không tìm thấy dữ liệu
                     shoeboxRepository.saveToMismatchTable(
                         cameraData = cameraData,
-                        rfidData = RfidData(rfidCode = rfidCode, null, null, null, null, null, null, null),
+                        rfidData = RfidData(rfidCode = rfidCode, po = "NO_PO", upc = "NO_UPC", ry = "NO_RY", size = "NO_SIZE", article = "NO_ARTICLE", color = "NO_COLOR", model = "NO_MODEL"),
                         mismatchFields = listOf("RFID_API_NO_DATA"),
                         selectedLine = selectedLine
                     )
                     
-                    ValidationResult.Success(
+                    val errorRfidData = RfidData(rfidCode = rfidCode, po = "NO_PO", upc = "NO_UPC", ry = "NO_RY", size = "NO_SIZE", article = "NO_ARTICLE", color = "NO_COLOR", model = "NO_MODEL")
+                    val result = ValidationResult.Success(
                         isMatch = false,
-                        message = "⚠️ No info for RFID $rfidCode. Record saved and logged.",
-                        rfidData = null,
+                        message = "No info for RFID $rfidCode. Record saved and logged.",
+                        rfidData = errorRfidData, // 🔹 TRẢ VỀ DỮ LIỆU ĐỂ UI HIỂN THỊ
                         mismatchFields = listOf("RFID_API_NO_DATA")
                     )
+                    _events.emit(result)
+                    result
                 }
                 is Result.Loading -> {
                     ValidationResult.Error("Unexpected loading state for $rfidCode")

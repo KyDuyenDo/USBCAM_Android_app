@@ -35,7 +35,7 @@ object Config {
     const val MIN_PO_LENGTH = 5
     const val MAX_PO_LENGTH = 12
     const val BEEP_VOLUME = 0
-    const val MAX_PROCESSING_FPS = 20
+    const val MAX_PROCESSING_FPS = 15
     const val SCAN_THROTTLE_MS = 500L
     const val BRIGHTNESS_BOOST = 30f
     // =========================================================

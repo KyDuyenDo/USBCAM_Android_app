@@ -89,29 +89,29 @@
 User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/UseCase   API (RFID)      DB
  │               │               │              │             │               │              │           │
  │ Box detected  │               │              │             │               │              │           │
- ├──────────────>│ updateLogic() │              │             │               │              │           │
- │               ├──────────────>│ State:       │             │               │              │           │
+ ├──────────────>│ updateLogic() │             │             │               │              │           │
+ │               ├──────────────>│ State:      │             │               │              │           │
  │               │               │ SCANNING     │             │               │              │           │
  │ Decoded OK    │               │              │             │               │              │           │
- │               │<──────────────┤ (Tracking)   │             │               │              │           │
+ │               │<──────────────┤ (Tracking)  │             │               │              │           │
  │               │               │              │             │               │              │           │
  │               │ getPoDetails()│              │             │               │              │           │
- │               ├─────────────────────────────>│             │               │              │           │
+ │               ├─────────────────────────────>│           │               │              │           │
  │               │   200 OK      │              │             │               │              │           │
- │               │<─────────────────────────────┤             │               │              │           │
+ │               │<─────────────────────────────┤           │               │              │           │
  │               │               │              │             │               │              │           │
  │               │ 🕒 Start 500ms RFID Window   │             │               │              │           │
- │               ├───────────────────────────────────────────>│               │              │           │
+ │               ├────────────────────────────────────────>│               │              │           │
  │               │               │              │             │               │              │           │
  │ Tags found    │               │              │             │   onTagRead() │              │           │
- │               │<───────────────────────────────────────────┤               │              │           │
+ │               │<───────────────────────────────────────>│               │              │           │
  │               │               │              │             │               │              │           │
- │ 🕒 Window End │               │ saveScanData(setOfRFIDs)     │             │               │              │
- │               ├───────────────────────────────────────────>│ invoke()      │              │           │
+ │ 🕒 Window End │               │ saveScanData(setOfRFIDs)   │             │               │            │
+ │               ├────────────────────────────────────────>│ invoke()      │              │           │
  │               │               │              │             │               │ getRfidInfo()│           │
  │               │               │              │             │               ├─────────────>│           │
- │               │               │              │             │               │   200 OK     │           │
- │               │               │              │             │               │<─────────────┤           │
+ │               │               │              │             │               │200OK(PO, Size, Art, Barcode)│
+ │               │               │              │             │               │<──────────────────────────┤
  │               │               │              │             │               │              │           │
  │               │               │              │             │               │ compareData()│           │
  │               │               │              │             │               │ ✅ MATCH    │           │
@@ -119,7 +119,7 @@ User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/U
  │               │               │              │             │               ├─────────────────────────>│
  │               │               │              │             │               │              │           │
  │               │  ValidationResult: SUCCESS   │             │               │              │           │
- │               │<───────────────────────────────────────────┤               │              │           │
+ │               │<───────────────────────────────────────┤               │              │           │
  │               │               │              │             │               │              │           │
  │ Show Success  │ onApiVerif(T) │              │             │               │              │           │
  │               ├──────────────>│ State:       │             │               │              │           │
@@ -137,7 +137,7 @@ User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/U
  │               │               │              │             │               │ saveMismatch()           │
  │               │               │              │             │               ├─────────────────────────>│
  │               │               │              │             │               │ (Store both Cam & RFID)  │
- │               │  ValidationResult: MISMATCH  │             │               │                          │
+ │               │  ValidationResult: MISMATCH (w/ Details)  │               │                          │
  │               │<───────────────────────────────────────────┤               │                          │
  │               │               │              │             │               │                          │
  │ Show Warning  │ onApiVerif(T) │              │             │               │                          │
@@ -258,17 +258,16 @@ User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/U
  │               ├───────────────────────────────────────────>│ invoke()      │              │           │
  │               │               │              │             │               │ getRfidInfo()│           │
  │               │               │              │             │               ├─────────────>│           │
- │               │               │              │             │               │  ❌ 404/Empty│           │
- │               │               │              │             │               │<─────────────┤           │
+ │               │               │              │             │               │  ❌ 404 / Empty Body        │
+ │               │               │              │             │               │<──────────────────────────┤
  │               │               │              │             │               │              │           │
  │               │               │              │             │               │ saveMain()   │ (Normal save)
  │               │               │              │             │               ├─────────────────────────>│
  │               │               │              │             │               │ saveMismatch() (No RFID info)
  │               │               │              │             │               ├─────────────────────────>│
  │               │               │              │             │               │              │           │
- │ Show Warning  │ ValidationResult: SUCCESS (isMatch=F)      │               │              │           │
- │ (No RFID info)│<───────────────────────────────────────────┤               │              │           │
- │               │               │              │             │               │              │           │
+ │ Show Warning  │ ValidationResult: SUCCESS (isMatch=F, No info)    │               │           │
+ │<───────────────────────────────────────────┤               │              │           │
 ```
 
 ---
@@ -307,8 +306,9 @@ User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/U
 │ │ RY / Size / PO / UPC / Qty / Article                  │  │
 │ └───────────────────────────────────────────────────────┘  │
 │                                                             │
-│ ┌─── RFID Snapshot (Best EPC) ──────────────────────────┐  │
-│ │ RFID / Size_RFID / PO_RFID / UPC_RFID / Article_RFID  │    │
+│ ┌─── RFID Snapshot (Data from API) ─────────────────────┐  │
+│ │ RFID / Size_RFID / PO_RFID / UPC_RFID / Article_RFID  │  │
+│ │ RY_RFID / Color / Model                               │  │
 │ └───────────────────────────────────────────────────────┘  │
 │                                                             │
 │ MismatchFields       │ TEXT (JSON: ["PO", "Size"])         │

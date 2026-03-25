@@ -334,7 +334,7 @@ class MainViewModelFactory(private val application: Application) : ViewModelProv
             val rfidRepository = RfidRepository(apiService)
 
             // Setup use cases
-            val validateWithRfidUseCase = ValidateWithRfidUseCase(rfidRepository, shoeboxRepository)
+            val validateWithRfidUseCase = ValidateWithRfidUseCase.getInstance(rfidRepository, shoeboxRepository)
             val processCameraWithRfidUseCase =
                     ProcessCameraWithRfidUseCase(shoeboxRepository, validateWithRfidUseCase)
 
