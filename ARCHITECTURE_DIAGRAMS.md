@@ -43,7 +43,8 @@
 │  │  │  • Orchestrates validation if RFIDs present             │  │ │
 │  │  │  • Fallback to normal save if no RFIDs                  │  │ │
 │  │  └──────────────────────────┬──────────────────────────────┘  │ │
-│  │                             │                                  │ │
+│  │                             │                                  +
+│ │
 │  │  ┌──────────────────────────▼──────────────────────────────┐  │ │
 │  │  │  ValidateWithRfidUseCase                                │  │ │
 │  │  │  1. Fetch RFID info from API                            │  │ │
@@ -153,23 +154,23 @@ User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/U
  │               │               │              │             │               │              │
  │ Decoded OK    │               │              │             │               │              │
  │               │ getPoDetails()│              │             │               │              │
- │               ├─────────────────────────────>│             │               │              │
+ │               ├──────────────────────────>│             │               │              │
  │               │   200 OK      │              │             │               │              │
- │               │<─────────────────────────────┤             │               │              │
+ │               │<──────────────────────────┤             │               │              │
  │               │               │              │             │               │              │
  │               │ 🕒 Start 2s RFID Window      │             │               │              │
- │               ├───────────────────────────────────────────>│               │              │
+ │               ├────────────────────────────────────────>│               │              │
  │               │               │              │             │               │              │
  │ 🕒 Window End │ (No tags)     │              │             │               │              │
  │               │ saveScanData(emptySet)       │             │               │              │
- │               ├───────────────────────────────────────────>│ invoke()      │              │
+ │               ├───────────────────────────────────────>│ invoke()      │              │
  │               │               │              │             │               │ No RFIDs ->  │
  │               │               │              │             │               │ saveMain()   │
  │               │               │              │             │               ├─────────────>│
  │               │               │              │             │               │              │
  │ Show Success  │ onApiVerif(T) │              │             │               │              │
- │               ├──────────────>│ State:       │             │               │              │
- │<──────────────┤               │ DECODED      │             │               │              │
+ │               ├─────────────>│ State:       │             │               │              │
+ │<─────────────┤               │ DECODED      │             │               │              │
 ```
 
 ### Flow 4: Offline Mode (API Failure)
@@ -198,9 +199,9 @@ User          DemoFragment    UseCases         Repository      Database      API
  │                 │              │                │ insertDetail()│            │
  │                 │              │                ├─────────────>│            │
  │                 │              │                │  Synced = 0  │  (Will sync later)
- │  showOffline() │              │                │              │            │
+ │  showOffline()  │              │                │              │            │
  │  "📴 Offline"  │              │                │              │            │
- │<────────────────┤              │                │              │            │
+ │<──────────────┤              │                │              │            │
 ```
 
 ### Flow 5: Background Sync (WorkManager)
@@ -248,26 +249,26 @@ WorkManager    SyncWorker    SyncUseCase    Repository      Database      API
 User        DemoFragment    BoxProcessor    API (PO)      RfidReader    MainVM/UseCase   API (RFID)      DB
  │               │               │              │             │               │              │           │
  │ Box detected  │               │              │             │               │              │           │
- ├──────────────>│ updateLogic() │              │             │               │              │           │
- │               ├──────────────>│ State:       │             │               │              │           │
+ ├──────────────>│ updateLogic() │             │             │               │              │           │
+ │               ├──────────────>│ State:      │             │               │              │           │
  │               │               │ SCANNING     │             │               │              │           │
  │ Tags found    │               │              │             │   onTagRead() │              │           │
- │               │<───────────────────────────────────────────┤               │              │           │
+ │               │<────────────────────────────────────────┤               │              │           │
  │               │               │              │             │               │              │           │
- │ Window End    │               │ saveScanData(setOfRFIDs)     │             │               │              │
- │               ├───────────────────────────────────────────>│ invoke()      │              │           │
+ │ Window End    │               │ saveScanData(setOfRFIDs)   │               │               │          │
+ │               ├────────────────────────────────────────>│ invoke()      │              │           │
  │               │               │              │             │               │ getRfidInfo()│           │
- │               │               │              │             │               ├─────────────>│           │
- │               │               │              │             │               │  ❌ 404 / Empty Body        │
- │               │               │              │             │               │<──────────────────────────┤
+ │               │               │              │             │               ├─────────────>│          │
+ │               │               │              │             │               │  ❌ 404 / Empty Body     │
+ │               │               │              │             │               │<───────────────────────┤
  │               │               │              │             │               │              │           │
  │               │               │              │             │               │ saveMain()   │ (Normal save)
  │               │               │              │             │               ├─────────────────────────>│
  │               │               │              │             │               │ saveMismatch() (No RFID info)
  │               │               │              │             │               ├─────────────────────────>│
  │               │               │              │             │               │              │           │
- │ Show Warning  │ ValidationResult: SUCCESS (isMatch=F, No info)    │               │           │
- │<───────────────────────────────────────────┤               │              │           │
+ │ Show Warning  │ ValidationResult: SUCCESS (isMatch=F, No info)              │              │           │
+ │<─────────────────────────────────────────┤               │              │              │
 ```
 
 ---
@@ -369,6 +370,44 @@ stateDiagram-v2
     WARNING --> READY : After Delay / Reset
     ERROR --> READY : User Retry / Reset
 ```
+
+### Flow 7: Device Heartbeat (Ping)
+
+```
+WorkManager    DeviceStatusWorker    API (ping_device)    Backend Dashboard
+    │                  │                   │                    │
+    │ Periodic         │                   │                    │
+    │ Trigger          │                   │                    │
+    │ (e.g. 15 min)    │                   │                    │
+    ├─────────────────>│                   │                    │
+    │                  │ doWork()          │                    │
+    │                  │                   │                    │
+    │                  │ GET /ping_device?line_id=L01           │
+    │                  ├──────────────────>│                    │
+    │                  │                   │ Updates Status     │
+    │                  │    200 OK         │ ──────────────────>│
+    │                  │<──────────────────┤                    │
+    │                  │                   │                    │
+    │                  │ POST /device-status                    │
+    │                  │ (Full Health)     │                    │
+    │                  ├──────────────────>│                    │
+    │                  │    200 OK         │                    │
+    │                  │<──────────────────┤                    │
+    │                  │                   │                    │
+    │                  │ Result.success()   │                    │
+    │<─────────────────┤                   │                    │
+```
+
+---
+
+---
+
+## 📈 Reporting & Target Logic
+
+### Total Target Calculation
+The **Total Target** displayed in the dashboard's summary (Tổng) is calculated dynamically to reflect the current shift's progress:
+- **Formula**: `Total Target = Σ (Target per Time Slot)` for all slots that have data (`count > 0`).
+- **Purpose**: Ensures that as the shift progresses and more time slots are populated, the target grows proportionally to the time already worked, rather than showing the full daily goal from the start.
 
 ---
 

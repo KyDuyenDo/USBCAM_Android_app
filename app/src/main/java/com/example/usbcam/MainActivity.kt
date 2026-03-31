@@ -27,6 +27,9 @@ class MainActivity : AppCompatActivity() {
         // 5. Start Sync Worker
         viewModel.startSyncWorker(this)
 
+        // 6. Initial Ping (Heartbeat Online)
+        viewModel.pingNow(this)
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)

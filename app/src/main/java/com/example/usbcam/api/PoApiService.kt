@@ -50,8 +50,13 @@ interface PoApiService {
         @retrofit2.http.Body status: DeviceStatusRequest
     ): retrofit2.Response<Void>
 
+    @GET("api/ping_device")
+    suspend fun pingDevice(
+        @Query("line_id") lineId: String
+    ): retrofit2.Response<Void>
+
     companion object {
-        private const val BASE_URL = "http://192.168.30.101:3000/"
+        private const val BASE_URL = "http://192.168.30.169:3000/"
 
         fun create(): PoApiService {
             return Retrofit.Builder()

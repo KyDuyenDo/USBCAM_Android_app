@@ -138,8 +138,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         }
 
         viewModel.timeSlotList.observe(viewLifecycleOwner) { list -> adapter.submitList(list) }
-        viewModel.targetData.observe(viewLifecycleOwner) { target ->
-            if (target != null) targetQuantity = target.quantityTarget
+        viewModel.totalTarget.observe(viewLifecycleOwner) { total ->
+            targetQuantity = total
         }
         viewModel.totalScan.observe(viewLifecycleOwner) { total ->
             if (total != null) totalProcessedCount = total

@@ -40,6 +40,9 @@ class MainViewModel(
     private val _timeSlotData = MutableLiveData<MainViewData>()
     val timeSlotData: LiveData<MainViewData> = _timeSlotData
 
+    private val _totalTarget = MutableLiveData<Int>(0)
+    val totalTarget: LiveData<Int> = _totalTarget
+
     private val _targetData = MutableLiveData<TargetData>()
     val targetData: LiveData<TargetData> = _targetData
 
@@ -231,6 +234,15 @@ class MainViewModel(
                 .enqueueUniquePeriodicWork("SyncWork", ExistingPeriodicWorkPolicy.KEEP, syncRequest)
     }
 
+    /** Ping device immediately (to report 'online' on app open) */
+    fun pingNow(context: Context) {
+        viewModelScope.launch {
+            val lineId = com.example.usbcam.utils.LinePreferences.getSelectedLine(context)
+            Log.d("MainViewModel", "Executing initial ping for line: $lineId")
+            repository.pingDevice(lineId)
+        }
+    }
+
     private val _timeSlotList = MutableLiveData<List<TimeSlotItem>>()
     val timeSlotList: LiveData<List<TimeSlotItem>> = _timeSlotList
 
@@ -243,6 +255,10 @@ class MainViewModel(
             Log.d("loadAllTimeSlots", "line=$currentLine target=${targetResponse?.quantityTarget}")
             val slots = repository.getAllSlotsToday(target)
             _timeSlotList.postValue(slots)
+
+            // Calculate total target for slots that have data
+            val totalT = slots.sumOf { it.target }
+            _totalTarget.postValue(totalT)
 
             targetResponse?.let {
                 _targetData.postValue(

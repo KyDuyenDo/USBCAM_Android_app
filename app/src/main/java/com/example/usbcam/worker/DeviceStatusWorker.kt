@@ -41,6 +41,15 @@ class DeviceStatusWorker(context: Context, params: WorkerParameters) : Coroutine
             
             // 2. Call API
             val apiService = PoApiService.create()
+            
+            // Heartbeat Ping
+            try {
+                apiService.pingDevice(lineId)
+                Log.d("DeviceStatusWorker", "Heartbeat ping successful for line: $lineId")
+            } catch (e: Exception) {
+                Log.e("DeviceStatusWorker", "Heartbeat ping failed", e)
+            }
+            
             val response = apiService.reportDeviceStatus(statusRequest)
             
             return if (response.isSuccessful) {

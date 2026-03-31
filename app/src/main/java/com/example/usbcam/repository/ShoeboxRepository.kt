@@ -423,4 +423,12 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
         }
     }
 
+    suspend fun pingDevice(lineId: String) {
+        try {
+            apiService.pingDevice(lineId)
+        } catch (e: Exception) {
+//            Log.e("ShoeboxRepo", "Ping failed", e)
+        }
+    }
+
 }
