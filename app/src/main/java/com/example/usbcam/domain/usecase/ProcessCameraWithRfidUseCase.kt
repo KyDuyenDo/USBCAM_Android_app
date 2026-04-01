@@ -50,7 +50,7 @@ class ProcessCameraWithRfidUseCase(
                     // 🔹 Bước 1: Kiểm tra RFID đã được scan từ RFID Scanner
                     if (scannedRfidCodes.isEmpty()) {
                         // 🔹 Bước 3: KHÔNG CÓ RFID
-                        Log.d(TAG, "📦 No RFID scanned → Saving normally to main table")
+                        Log.d(TAG, "No RFID scanned → Saving normally to main table")
 
                         // Bỏ qua bước so sánh, lưu dữ liệu bình thường
                         shoeboxRepository.saveToMainTable(
@@ -62,7 +62,7 @@ class ProcessCameraWithRfidUseCase(
 
                         return@withContext ValidationResult.Success(
                                 isMatch = true, // Considered "match" since no validation needed
-                                message = "Data saved successfully (no RFID scanned)"
+                                message = "Đã lưu sản lượng!"
                         )
                     }
 
@@ -116,13 +116,13 @@ class ProcessCameraWithRfidUseCase(
                         ValidationResult.Success(
                                 isMatch = true,
                                 message =
-                                        "All ${scannedRfidCodes.size} RFIDs processed and matched."
+                                        "OKE - RFID khớp! Đã lưu sản lượng."
                         )
                     } else {
                         ValidationResult.Success(
                                 isMatch = false,
                                 message =
-                                        "Processed ${scannedRfidCodes.size} RFIDs. $overallMessage"
+                                        "RFID không khớp: $overallMessage"
                         )
                     }
                 } catch (e: Exception) {

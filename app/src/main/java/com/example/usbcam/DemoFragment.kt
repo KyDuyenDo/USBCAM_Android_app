@@ -385,7 +385,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
                             android.widget.Toast.makeText(
                                             requireContext(),
-                                            result.message,
+                                            "${result.message}",
                                             android.widget.Toast.LENGTH_SHORT
                                     )
                                     .show()
@@ -878,7 +878,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                             AppState.IDLE -> "READY"
                             AppState.SCANNING -> "SCANNING..."
                             AppState.VERIFYING -> "VERIFYING..."
-                            AppState.DECODED -> "SUCCESS"
+                            AppState.DECODED -> "OKE"
                             AppState.RESETTING -> "RESET"
                         }
                 updateTextView(binding.tvStatusOk, statusText)
@@ -907,9 +907,13 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                                     )
                         }
 
-                if (binding.tvStatusOk.currentTextColor != colorInt) {
-                    binding.tvStatusOk.setTextColor(colorInt)
-                }
+                // Apply colorInt to BACKGROUND tint (not text color) so text remains readable
+                binding.tvStatusOk.backgroundTintList =
+                        android.content.res.ColorStateList.valueOf(colorInt)
+                // Keep text always WHITE for contrast on colored background
+                binding.tvStatusOk.setTextColor(
+                        androidx.core.content.ContextCompat.getColor(requireContext(), R.color.white)
+                )
 
                 updateTextView(binding.tvUpcValue, boxProcessor.barcode ?: "--")
                 updateTextView(binding.tvPoValue, boxProcessor.po ?: "--")
