@@ -51,6 +51,30 @@ class MainActivity : AppCompatActivity() {
                     REQUEST_CODE_PERMISSIONS
             )
         }
+
+        // Xử lý intent nếu app được mở do cắm camera
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
+            val device =
+                    intent.getParcelableExtra<android.hardware.usb.UsbDevice>(
+                            UsbManager.EXTRA_DEVICE
+                    )
+            android.util.Log.d("MainActivity", "App started/resumed by USB Attachment: ${device?.deviceName}")
+            
+            // Nếu đã đủ quyền thì đảm bảo camera được khởi tạo
+            if (allPermissionsGranted()) {
+                startCamera()
+            }
+        }
     }
 
     private fun startCamera() {
@@ -94,7 +118,12 @@ class MainActivity : AppCompatActivity() {
                 override fun onReceive(context: Context, intent: Intent) {
                     when (intent.action) {
                         UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
-                            android.util.Log.d("MainActivity", "USB Device Attached")
+                            val device = intent.getParcelableExtra<android.hardware.usb.UsbDevice>(UsbManager.EXTRA_DEVICE)
+                            android.util.Log.d("MainActivity", "USB Device Attached: ${device?.deviceName}")
+                            
+                            // Hiển thị thông báo khi nhận diện được Camera/Thiết bị USB
+                            android.widget.Toast.makeText(context, "USB Device Attached: ${device?.deviceName}", android.widget.Toast.LENGTH_SHORT).show()
+                            
                             // Trigger RFID auto-connect if device is attached
                             com.example.usbcam.rfid.RfidConnectionManager.getInstance(context).autoConnect()
                         }
@@ -106,7 +135,7 @@ class MainActivity : AppCompatActivity() {
                             android.util.Log.d(
                                     "MainActivity",
                                     "USB Device Detached: ${device?.deviceName}"
-                            )
+                             )
                             viewModel.onUsbDeviceDetached(device)
                         }
                     }
