@@ -208,6 +208,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
     private lateinit var rfidConnectionManager: com.example.usbcam.rfid.RfidConnectionManager
     private var rfidScanningStarted = false // Protection flag
+    private val verificationTimeoutHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private fun setupRfidManager() {
         rfidConnectionManager =
@@ -243,8 +244,19 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                         activity?.runOnUiThread {
                             Log.i(TAG, "SDK Tag Read: $epc (RSSI: $rssi)")
 
-                            // Update ViewModel - it will handle API call automatically
+                            // Update ViewModel
                             rfidViewModel.onTagRead(epc, rssi, antenna, channel)
+
+                            // 🔹 REQUIREMENT: Stop physical scanning immediately after reading 1 tag
+                            if (rfidScanningStarted) {
+                                if (::rfidConnectionManager.isInitialized) {
+                                    rfidConnectionManager.stopScanning()
+                                }
+                                rfidViewModel.setScanning(false)
+                            }
+
+                            // 🔹 REQUIREMENT: Complete immediately if we have API data
+                            checkAndCompleteRfidVerification(epc)
                         }
                     }
 
@@ -643,6 +655,19 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 }
             }
 
+            // 🔹 REQUIREMENT: Start RFID scanning earlier (in SCANNING state)
+            if (state == AppState.SCANNING && lastState != AppState.SCANNING) {
+                if (rfidViewModel.isConnected.value == true && !rfidScanningStarted) {
+                    Log.i(TAG, "Entering SCANNING state -> Starting RFID scan early")
+                    rfidScanningStarted = true
+                    rfidViewModel.clearRfidData()
+                    if (::rfidConnectionManager.isInitialized) {
+                        rfidConnectionManager.startScanning()
+                    }
+                    rfidViewModel.setScanning(true)
+                }
+            }
+
             if (state != lastState) {
                 handleStateFeedback(state)
                 lastState = state
@@ -770,44 +795,78 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         rfidViewModel.setCurrentCameraResponse(data)
 
         if (rfidViewModel.isConnected.value == true) {
-            Log.i(
-                    TAG,
-                    "Camera Data Ready -> Starting RFID scan for ${Config.RFID_SCAN_WINDOW_MS}ms"
-            )
-            rfidScanningStarted = true
-            rfidViewModel.clearRfidData()
-
-            if (::rfidConnectionManager.isInitialized) {
-                rfidConnectionManager.startScanning()
+            // Check if we already have an EPC from early scan
+            val existingEpc = rfidViewModel.lastEpc.value
+            if (!existingEpc.isNullOrEmpty()) {
+                Log.i(TAG, "API Data Ready & Tag Already Found ($existingEpc) -> Completing Immediately")
+                completeRfidVerification(po, barcode, data, existingEpc)
+                return
             }
-            rfidViewModel.setScanning(true)
 
-            android.os.Handler(android.os.Looper.getMainLooper())
-                    .postDelayed(
-                            {
-                                if (isAdded && rfidScanningStarted) {
-                                    rfidScanningStarted = false
-                                    if (::rfidConnectionManager.isInitialized) {
-                                        rfidConnectionManager.stopScanning()
-                                    }
-                                    rfidViewModel.setScanning(false)
+            // If scanning hasn't started yet (maybe missed state transition), start now
+            if (!rfidScanningStarted) {
+                Log.i(TAG, "API Data Ready -> Starting RFID scan sequence")
+                rfidScanningStarted = true
+                rfidViewModel.clearRfidData()
+                if (::rfidConnectionManager.isInitialized) {
+                    rfidConnectionManager.startScanning()
+                }
+                rfidViewModel.setScanning(true)
+            }
 
-                                    val bestEpc = rfidViewModel.processAndGetBestEpc()
-                                    Log.i(TAG, "RFID Scan complete. Best EPC: $bestEpc")
-
-                                    val scannedRfids =
-                                            if (bestEpc != null) setOf(bestEpc) else emptySet()
-                                    viewModel.saveScanData(po, barcode, data, scannedRfids)
-                                    boxProcessor.onApiVerification(true)
-                                }
-                            },
-                            Config.RFID_SCAN_WINDOW_MS
-                    )
+            // Set safety timeout (if no tag is found within window)
+            verificationTimeoutHandler.removeCallbacksAndMessages(null)
+            verificationTimeoutHandler.postDelayed(
+                    {
+                        if (isAdded && rfidScanningStarted) {
+                            val bestEpc = rfidViewModel.processAndGetBestEpc()
+                            Log.i(TAG, "RFID Scan Timeout -> Finalizing with best available: $bestEpc")
+                            completeRfidVerification(po, barcode, data, bestEpc)
+                        }
+                    },
+                    Config.RFID_SCAN_WINDOW_MS
+            )
         } else {
+            // No RFID connected
             val scannedRfids = emptySet<String>()
             viewModel.saveScanData(po, barcode, data, scannedRfids)
             boxProcessor.onApiVerification(true)
         }
+    }
+
+    private fun checkAndCompleteRfidVerification(epc: String) {
+        if (!rfidScanningStarted) return
+
+        val data = currentApiResponse ?: return
+        val po = boxProcessor.po ?: return
+        val barcode = boxProcessor.barcode ?: return
+
+        Log.i(TAG, "RFID Tag Read ($epc) and API Data Ready -> Stopping immediately.")
+
+        // Cancel the safety timeout
+        verificationTimeoutHandler.removeCallbacksAndMessages(null)
+
+        // Complete the process
+        completeRfidVerification(po, barcode, data, epc)
+    }
+
+    private fun completeRfidVerification(
+            po: String,
+            barcode: String,
+            data: com.example.usbcam.api.PoResponse,
+            epc: String?
+    ) {
+        if (!rfidScanningStarted) return
+        rfidScanningStarted = false
+
+        if (::rfidConnectionManager.isInitialized) {
+            rfidConnectionManager.stopScanning()
+        }
+        rfidViewModel.setScanning(false)
+
+        val scannedRfids = if (epc.isNullOrEmpty()) emptySet() else setOf(epc)
+        viewModel.saveScanData(po, barcode, data, scannedRfids)
+        boxProcessor.onApiVerification(true)
     }
 
     private fun callApi() {
