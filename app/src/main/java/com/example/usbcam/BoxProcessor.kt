@@ -32,6 +32,7 @@ class BoxProcessor {
     private val tracker = TrackingManager()
 
     // NEW COMPONENTS
+    private val objectDetector = ObjectDetector()
     private val presenceDetector = PresenceDetector()
     private val poExtractor = POExtractor()
     private val blurDetector = BlurDetector()
@@ -54,8 +55,11 @@ class BoxProcessor {
             )
         }
 
-        // 1. Detect Presence (Using new component)
-        val presence = presenceDetector.detect(gray)
+        // 1. Detect Object Presence (Fast check)
+        val objectPresent = objectDetector.detect(gray)
+
+        // 2. Detect Barcode Presence (Only if object is present)
+        val presence = if (objectPresent) presenceDetector.detect(gray) else false
 
         when (currentState) {
             AppState.IDLE -> {
@@ -235,6 +239,7 @@ class BoxProcessor {
     fun release() {
         try {
             barcodeDecoder.close()
+            objectDetector.release()
             presenceDetector.release()
             poExtractor.release()
             blurDetector.release()
