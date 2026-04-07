@@ -35,7 +35,7 @@ class PresenceDetector {
         var roiCheck: Mat? = null
 
         try {
-            // 1. Sobel Gradient
+             // 1. Sobel Gradient
             Imgproc.Sobel(gray, gradX, CvType.CV_16S, 1, 0)
             Imgproc.Sobel(gray, gradY, CvType.CV_16S, 0, 1)
 

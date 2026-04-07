@@ -22,6 +22,13 @@ object Config {
     const val MIN_ASPECT_RATIO = 1.0
 
     // =========================================================
+    // OBJECT DETECTION (SIMPLE MOTION)
+    // =========================================================
+
+    const val OBJECT_MOTION_THRESHOLD = 25.0
+    const val OBJECT_MIN_CHANGE_RATIO = 0.015 // 1.5% pixels changed
+
+    // =========================================================
     // BLUR / FOCUS & OTHERS
     // =========================================================
 
@@ -30,7 +37,7 @@ object Config {
     const val ROI_WIDTH_RATIO = 0.5
     const val ROI_HEIGHT_RATIO = 0.5
 
-    const val SCAN_TIMEOUT_MS = 3000L
+    const val SCAN_TIMEOUT_MS = 2000L
 
     const val MIN_PO_LENGTH = 5
     const val MAX_PO_LENGTH = 12
