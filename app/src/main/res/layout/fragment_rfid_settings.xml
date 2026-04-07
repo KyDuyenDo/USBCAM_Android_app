@@ -120,6 +120,65 @@
             </FrameLayout>
         </LinearLayout>
 
+        <!-- Power Configuration -->
+        <LinearLayout
+            android:id="@+id/ll_power_config"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="24dp"
+            android:alpha="0.5">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Transmit Power"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#3C4043"/>
+
+                <TextView
+                    android:id="@+id/tv_power_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="26 dBm"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="#1967D2"/>
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/seek_bar_power"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="26"
+                android:progress="26"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:layout_marginBottom="12dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_set_power"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Apply Power Setting"
+                app:cornerRadius="8dp"
+                android:enabled="false"
+                android:textColor="#1967D2"
+                app:strokeColor="#1967D2"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"/>
+        </LinearLayout>
+
         <!-- Action Buttons Grid -->
         <LinearLayout
             android:layout_width="match_parent"

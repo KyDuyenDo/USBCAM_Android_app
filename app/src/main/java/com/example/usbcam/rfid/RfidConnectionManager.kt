@@ -237,6 +237,16 @@ class RfidConnectionManager private constructor(private val context: Context) {
         isScanning = false
     }
 
+    /** Thiết lập công suất vòng từ RFID (0-26 dBm) */
+    fun setPower(power: Byte) {
+        if (!isConnected) {
+            eventCallback?.onError("Chưa kết nối với đầu đọc RFID, không thể đổi công suất")
+            return
+        }
+        Log.i(TAG, "⚡ Đang đặt công suất RFID thành $power dBm...")
+        rfidManager.setPower(power)
+    }
+
     /** Reset/Clear the device state when transitioning to IDLE using Module Init Cmd */
     fun clearDeviceState() {
         if (!isConnected) return

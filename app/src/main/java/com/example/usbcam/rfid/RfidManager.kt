@@ -250,6 +250,31 @@ class RfidManager private constructor(private val context: Context) :
         }
     }
 
+    /** 
+     * Set RFID reader power (0-26 dBm).
+     * If value > 26, the device will treat it as 26 dBm.
+     */
+    fun setPower(power: Byte) {
+        if (!isConnected) {
+            callback?.onError("RFID device not connected. Cannot set power.")
+            return
+        }
+
+        try {
+            val cmdBytes = CmdBuilder.buildSetPwrCmd(power, 0x00.toByte())
+            val success = usbCore?.writeData(cmdBytes, 500) ?: false
+
+            if (success) {
+                Log.d(TAG, "Successfully sent set power command ($power dBm)")
+            } else {
+                callback?.onError("Failed to send set power command")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting power: ${e.message}", e)
+            callback?.onError("Failed to set power: ${e.message}")
+        }
+    }
+
     /** Check if currently scanning */
     fun isScanning(): Boolean = isScanning
 

@@ -42,6 +42,12 @@ class RfidSettingsFragment : DialogFragment() {
     private lateinit var btnClose: Button
     private lateinit var llDeviceSelection: LinearLayout
     
+    // Power Config Views
+    private lateinit var llPowerConfig: LinearLayout
+    private lateinit var tvPowerValue: TextView
+    private lateinit var seekBarPower: android.widget.SeekBar
+    private lateinit var btnSetPower: Button
+    
     private var deviceList: List<Pair<Int, Int>> = emptyList()
 
     override fun onStart() {
@@ -76,6 +82,12 @@ class RfidSettingsFragment : DialogFragment() {
         btnClose = view.findViewById(R.id.btn_close_settings)
         llDeviceSelection = view.findViewById(R.id.ll_device_selection)
         
+        // Power Config bindings
+        llPowerConfig = view.findViewById(R.id.ll_power_config)
+        tvPowerValue = view.findViewById(R.id.tv_power_value)
+        seekBarPower = view.findViewById(R.id.seek_bar_power)
+        btnSetPower = view.findViewById(R.id.btn_set_power)
+        
         // Initialize connection manager
         connectionManager = RfidConnectionManager.getInstance(requireContext())
         
@@ -99,6 +111,27 @@ class RfidSettingsFragment : DialogFragment() {
         
         btnClose.setOnClickListener {
             dismiss()
+        }
+
+        // Power settings logic
+        seekBarPower.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                tvPowerValue.text = "$progress dBm"
+                btnSetPower.isEnabled = connectionManager.isConnected
+            }
+
+            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+        })
+
+        btnSetPower.setOnClickListener {
+            val powerValue = seekBarPower.progress.toByte()
+            connectionManager.setPower(powerValue)
+            android.widget.Toast.makeText(
+                requireContext(), 
+                "Power set to $powerValue dBm", 
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -191,6 +224,11 @@ class RfidSettingsFragment : DialogFragment() {
             btnDisconnect.isEnabled = true
             llDeviceSelection.alpha = 0.5f
             
+            // Enable Power Config
+            llPowerConfig.alpha = 1.0f
+            btnSetPower.isEnabled = true
+            seekBarPower.isEnabled = true
+            
         } else {
             updateStatus("Chưa kết nối")
             tvDeviceInfo.visibility = View.GONE
@@ -198,6 +236,11 @@ class RfidSettingsFragment : DialogFragment() {
             btnConnect.isEnabled = deviceList.isNotEmpty()
             btnDisconnect.isEnabled = false
             llDeviceSelection.alpha = 1.0f
+            
+            // Disable Power Config
+            llPowerConfig.alpha = 0.5f
+            btnSetPower.isEnabled = false
+            seekBarPower.isEnabled = false
         }
     }
 
