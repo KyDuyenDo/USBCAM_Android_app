@@ -3,6 +3,7 @@ package com.example.usbcam
 import android.graphics.Bitmap
 import android.util.Log
 import org.opencv.core.Mat
+import org.opencv.objdetect.BarcodeDetector
 
 class BoxProcessor {
 
@@ -32,8 +33,8 @@ class BoxProcessor {
     private val tracker = TrackingManager()
 
     // NEW COMPONENTS
-    private val objectDetector = ObjectDetector()
-    private val presenceDetector = PresenceDetector()
+    private val opencvBarcodeDetector = BarcodeDetector()
+    private val barcodePoints = Mat()
     private val poExtractor = POExtractor()
     private val blurDetector = BlurDetector()
 
@@ -44,7 +45,7 @@ class BoxProcessor {
         val now = System.currentTimeMillis()
         frameProcessCount++
 
-        // ✅ CRITICAL: Periodic cleanup mỗi 25 giây (~500 frames @ 20 FPS)
+        // CRITICAL: Periodic cleanup mỗi 25 giây (~500 frames @ 20 FPS)
         if (frameProcessCount % CLEANUP_INTERVAL == 0L) {
             performPeriodicCleanup()
             lastCleanupTime = now
@@ -55,11 +56,13 @@ class BoxProcessor {
             )
         }
 
-        // 1. Detect Object Presence (Fast check)
-        val objectPresent = objectDetector.detect(gray)
-
-        // 2. Detect Barcode Presence (Only if object is present)
-        val presence = if (objectPresent) presenceDetector.detect(gray) else false
+        // 1. Detect Barcode Presence using OpenCV's BarcodeDetector
+        val presence = try {
+            opencvBarcodeDetector.detect(gray, barcodePoints)
+        } catch (e: Exception) {
+            Log.e(TAG, "OpenCV Barcode detection error", e)
+            false
+        }
 
         when (currentState) {
             AppState.IDLE -> {
@@ -79,11 +82,15 @@ class BoxProcessor {
                 // Timeout Check
                 // Timeout Check
                 val elapsed = now - stateStartTime
-                if (elapsed > Config.SCAN_TIMEOUT_MS) {
-                    Log.i(TAG, "SCAN TIMEOUT -> Resetting to IDLE")
+                if (!presence) {
+                    Log.i(TAG, "STATE: IDLE -> SCANNING (Presence Detected)")
                     transitionTo(AppState.IDLE)
-                    return
                 }
+//                if (elapsed > Config.SCAN_TIMEOUT_MS) {
+//                    Log.i(TAG, "SCAN TIMEOUT -> Resetting to IDLE")
+//                    transitionTo(AppState.IDLE)
+//                    return
+//                }
 
                 // Blur Check (Using new component)
                 if (!blurDetector.check(gray)) {
@@ -239,8 +246,9 @@ class BoxProcessor {
     fun release() {
         try {
             barcodeDecoder.close()
-            objectDetector.release()
-            presenceDetector.release()
+            barcodePoints.release()
+            // BarcodeDetector doesn't have an explicit release in Java API usually, 
+            // GraphicalCodeDetector might not have close() either, but native memory is handled by GC/finalize
             poExtractor.release()
             blurDetector.release()
         } catch (_: Exception) {}
