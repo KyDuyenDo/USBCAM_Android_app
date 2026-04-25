@@ -1,3 +1,6 @@
 {
-    "dotrush.roslyn.projectOrSolutionFiles": []
+    "dotrush.roslyn.projectOrSolutionFiles": [],
+    "files.watcherExclude": {
+        "**/target": true
+    }
 }

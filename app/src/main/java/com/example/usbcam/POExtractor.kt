@@ -230,6 +230,8 @@ class POExtractor {
 
     /**
      * Generate smart variations để xử lý các trường hợp OCR sai
+     */
+    /*
     private fun generateSmartVariations(candidates: List<String>): List<String> {
         val variations = mutableSetOf<String>()
 
@@ -270,6 +272,7 @@ class POExtractor {
 
         return variations.toList()
     }
+    */
 
     /**
      * Normalize candidate: fix OCR errors và clean

@@ -35,6 +35,8 @@ class CameraRender(context: Context) : AbstractFboRender(context) {
     private var mStMatrix = FloatArray(16)
     private var mMVPMatrix = FloatArray(16)
     private var mOESTextureId: Int = -1
+    private var mBrightnessHandle: Int = -1
+    private var mBrightness: Float = 0f
 
     override fun init() {
         mOESTextureId = createOESTexture()
@@ -42,11 +44,13 @@ class CameraRender(context: Context) : AbstractFboRender(context) {
         Matrix.setIdentityM(mStMatrix, 0)
         mStMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uStMatrix")
         mMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix")
+        mBrightnessHandle = GLES20.glGetUniformLocation(mProgram, "uBrightness")
     }
 
     override fun beforeDraw() {
         GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0)
         GLES20.glUniformMatrix4fv(mStMatrixHandle, 1, false, mStMatrix, 0)
+        GLES20.glUniform1f(mBrightnessHandle, mBrightness)
     }
 
     override fun getBindTextureType(): Int {
@@ -105,6 +109,10 @@ class CameraRender(context: Context) : AbstractFboRender(context) {
     }
 
     fun getCameraTextureId() = mOESTextureId
+
+    fun setBrightness(brightness: Float) {
+        this.mBrightness = brightness
+    }
 
     companion object {
         private const val TAG = "CameraRender"

@@ -17,29 +17,47 @@ class BarcodeDecoder {
 
     fun scan(bitmap: Bitmap): Result? {
         scanCount++
-
         try {
-            // Log.v(TAG, "Scan #$scanCount - Processing ${bitmap.width}x${bitmap.height} bitmap")
-
             val image = InputImage.fromBitmap(bitmap, 0)
-            val task = scanner.process(image)
-            Tasks.await(task)
-
-            val barcodes = task.result
-
-            if (barcodes.isNullOrEmpty()) {
-                return null
-            }
-
-            val barcode = barcodes[0]
-            val rawValue = barcode.rawValue ?: return null
-            val box = barcode.boundingBox ?: return null
-
-            return Result(box = RectF(box), value = rawValue)
+            return processImage(image)
         } catch (e: Exception) {
             Log.e(TAG, "Scan #$scanCount - ERROR", e)
             return null
         }
+    }
+
+    fun scan(data: ByteArray, width: Int, height: Int): Result? {
+        scanCount++
+        try {
+            // format=NV21, rotation=0
+            val image = InputImage.fromByteArray(
+                data,
+                width,
+                height,
+                0,
+                InputImage.IMAGE_FORMAT_NV21
+            )
+            return processImage(image)
+        } catch (e: Exception) {
+            Log.e(TAG, "Scan #$scanCount (NV21) - ERROR", e)
+            return null
+        }
+    }
+
+    private fun processImage(image: InputImage): Result? {
+        val task = scanner.process(image)
+        Tasks.await(task)
+
+        val barcodes = task.result
+        if (barcodes.isNullOrEmpty()) {
+            return null
+        }
+
+        val barcode = barcodes[0]
+        val rawValue = barcode.rawValue ?: return null
+        val box = barcode.boundingBox ?: return null
+
+        return Result(box = RectF(box), value = rawValue)
     }
 
     fun close() {

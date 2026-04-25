@@ -63,86 +63,139 @@ class BoxProcessor {
         // CRITICAL: Periodic cleanup mỗi ~25 giây (~500 frames @ 20 FPS)
         if (frameProcessCount % CLEANUP_INTERVAL == 0L) {
             performPeriodicCleanup()
-            Log.i(
-                TAG,
-                "🧹 Periodic cleanup #${frameProcessCount / CLEANUP_INTERVAL} " +
-                        "(frame $frameProcessCount, uptime ${(now - stateStartTime) / 1000}s)"
-            )
+            Log.i(TAG, "🧹 Periodic cleanup #${frameProcessCount / CLEANUP_INTERVAL} (frame $frameProcessCount)")
         }
 
-        // 1. Presence detection bằng ML Kit barcode scanner
-        //    Nếu ML Kit phát hiện barcode → có vật thể trên băng chuyền.
-        //    Dùng throttle nhẹ hơn ở đây vì chỉ cần biết có/không.
         val presenceScanResult = try {
             barcodeDecoder.scan(bitmap)
         } catch (e: Exception) {
-            Log.e(TAG, "Presence scan error", e)
             null
         }
+        processInternal(bitmap, presenceScanResult, now)
+    }
+
+    /**
+     * Tương tự updateLogic(Bitmap) nhưng dùng data NV21 để tránh decode/allocate Bitmap
+     */
+    fun updateLogic(data: ByteArray, width: Int, height: Int) {
+        val now = System.currentTimeMillis()
+        frameProcessCount++
+
+        if (frameProcessCount % CLEANUP_INTERVAL == 0L) {
+            performPeriodicCleanup()
+        }
+
+        // 1. Presence detection bằng NV21
+        val presenceScanResult = try {
+            barcodeDecoder.scan(data, width, height)
+        } catch (e: Exception) {
+            null
+        }
+
+        // Cho các bước cần Bitmap (như POExtractor), chúng ta sẽ convert sau nếu cần
+        // Nhưng phần lớn thời gian (IDLE/SCANNING blur) thì không cần
+        processInternal(data, width, height, presenceScanResult, now)
+    }
+
+    private fun processInternal(bitmap: Bitmap, presenceScanResult: BarcodeDecoder.Result?, now: Long) {
         val presence = presenceScanResult != null
 
         when (currentState) {
             AppState.IDLE -> {
                 feedbackMessage = "READY"
-                motionLevel = "LOW"
-                conveyorDirection = ""
-
-                if (presence) {
-                    Log.i(TAG, "STATE: IDLE -> SCANNING (Presence Detected)")
-                    transitionTo(AppState.SCANNING)
-                }
+                if (presence) transitionTo(AppState.SCANNING)
             }
             AppState.SCANNING -> {
                 feedbackMessage = "SCANNING..."
-
                 if (!presence) {
-                    Log.i(TAG, "STATE: SCANNING -> IDLE (Presence Lost)")
                     transitionTo(AppState.IDLE)
                     return
                 }
-
-                // Blur Check (nhận Bitmap)
-                if (!blurDetector.check(bitmap)) {
-                    return
-                }
-
-                // Throttle Scan
+                if (!blurDetector.check(bitmap)) return
                 if (now - lastScanTime < Config.SCAN_THROTTLE_MS) return
                 lastScanTime = now
 
-                // Dùng lại kết quả presence scan nếu có (tránh scan 2 lần)
-                val result = presenceScanResult
-                if (result != null) {
-                    Log.i(TAG, "BARCODE FOUND: ${result.value}")
-                    barcode = result.value
-                    barcodeBox = result.box  // Store barcode position
-                    Log.d(TAG, "Barcode position: $barcodeBox")
-
-                    // Extract PO with position
-                    val poResult = poExtractor.extract(bitmap, result.value)
-                    if (poResult != null) {
-                        po = poResult.po
-                        poBox = poResult.box  // Store PO position
-                        Log.d(TAG, "PO position: $poBox")
-                    }
-
-                    // Initialize Tracking
-                    tracker.updateDetection(result.box, now)
-
-                    if (po != null) {
-                        Log.i(TAG, "BARCODE + PO FOUND -> Verifying")
-                        transitionTo(AppState.VERIFYING)
-                    }
-                }
+                handleDetection(bitmap, presenceScanResult, now)
             }
             AppState.VERIFYING -> {
                 feedbackMessage = "VERIFYING..."
-
-                val result = try {
-                    barcodeDecoder.scan(bitmap)
-                } catch (e: Exception) {
-                    null
+                val result = presenceScanResult ?: try { barcodeDecoder.scan(bitmap) } catch (e: Exception) { null }
+                if (result != null) {
+                    tracker.updateDetection(result.box, now)
+                    if (tracker.isLikelyNewBox(result.box)) {
+                        transitionTo(AppState.DECODED)
+                    }
                 }
+            }
+            AppState.DECODED -> {
+                feedbackMessage = "DONE"
+                if (!presence) transitionTo(AppState.IDLE)
+            }
+        }
+    }
+
+    private fun processInternal(data: ByteArray, width: Int, height: Int, presenceScanResult: BarcodeDecoder.Result?, now: Long) {
+        val presence = presenceScanResult != null
+
+        when (currentState) {
+            AppState.IDLE -> {
+                feedbackMessage = "READY"
+                if (presence) transitionTo(AppState.SCANNING)
+            }
+            AppState.SCANNING -> {
+                feedbackMessage = "SCANNING..."
+                if (!presence) {
+                    transitionTo(AppState.IDLE)
+                    return
+                }
+                if (!blurDetector.check(data, width, height)) return
+                if (now - lastScanTime < Config.SCAN_THROTTLE_MS) return
+                lastScanTime = now
+
+                // Cần Bitmap để Extract PO
+                val bitmap = nv21ToBitmap(data, width, height)
+                handleDetection(bitmap, presenceScanResult, now)
+                bitmap.recycle()
+            }
+            AppState.VERIFYING -> {
+                feedbackMessage = "VERIFYING..."
+                val result = presenceScanResult ?: try { barcodeDecoder.scan(data, width, height) } catch (e: Exception) { null }
+                if (result != null) {
+                    tracker.updateDetection(result.box, now)
+                    if (tracker.isLikelyNewBox(result.box)) {
+                        transitionTo(AppState.DECODED)
+                    }
+                }
+            }
+            AppState.DECODED -> {
+                feedbackMessage = "DONE"
+                if (!presence) transitionTo(AppState.IDLE)
+            }
+        }
+    }
+
+    private fun handleDetection(bitmap: Bitmap, result: BarcodeDecoder.Result?, now: Long) {
+        if (result == null) return
+        barcode = result.value
+        barcodeBox = result.box
+        tracker.updateDetection(result.box, now)
+
+        val poResult = poExtractor.extract(bitmap, result.value)
+        if (poResult != null) {
+            po = poResult.po
+            poBox = poResult.box
+            Log.i(TAG, "BARCODE + PO FOUND -> Verifying")
+            transitionTo(AppState.VERIFYING)
+        }
+    }
+
+    private fun nv21ToBitmap(data: ByteArray, width: Int, height: Int): Bitmap {
+        val yuvImage = android.graphics.YuvImage(data, android.graphics.ImageFormat.NV21, width, height, null)
+        val out = java.io.ByteArrayOutputStream()
+        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 90, out)
+        val imageBytes = out.toByteArray()
+        return android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+    }
 
                 if (result != null) {
                     tracker.updateDetection(result.box, now)

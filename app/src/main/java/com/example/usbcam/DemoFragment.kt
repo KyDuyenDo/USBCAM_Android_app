@@ -431,6 +431,16 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 startProcessingThread()
                 com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = true
                 com.example.usbcam.utils.DeviceStatusTracker.reportStatus(requireContext())
+                
+                // Set GPU brightness boost
+                if (Config.BRIGHTNESS_BOOST > 0) {
+                    self.setBrightness(Config.BRIGHTNESS_BOOST / 255f)
+                }
+                
+                // Set fixed focus to 450
+                self.setAutoFocus(false)
+                self.setFocus(450)
+                Log.i(TAG, "Camera focus fixed to 450")
             }
             ICameraStateCallBack.State.CLOSED -> {
                 cameraInstance = null
@@ -447,7 +457,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 .setPreviewHeight(480)
                 .setRenderMode(CameraRequest.RenderMode.OPENGL)
                 .setDefaultRotateType(RotateType.ANGLE_0)
-                .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG)
+                .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_NV21)
                 .setRawPreviewData(true)
                 .create()
     }
@@ -461,6 +471,13 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         // Don't process data if fragment is detached
         if (data == null || !isAdded) return
         com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = true
+
+        // FIX 3: FPS Limiter moved here to prevent queue backlog and waste of resources
+        val now = System.currentTimeMillis()
+        if (now - lastFrameTime < 1000 / Config.MAX_PROCESSING_FPS) {
+            return
+        }
+        lastFrameTime = now
 
         if (frameWidth != width || frameHeight != height) {
             frameWidth = width
@@ -517,51 +534,18 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private fun processFrame(data: ByteArray) {
         if (!isAdded) return
 
-        val now = System.currentTimeMillis()
-
-        // FPS limiter
-        if (now - lastProcessTime < (1000L / Config.MAX_PROCESSING_FPS)) return
-        lastProcessTime = now
-
-        // Decode MJPEG → Bitmap bằng Android BitmapFactory
-        var rawBitmap: Bitmap? = null
+        val startTime = System.currentTimeMillis()
         try {
-            rawBitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
-
-            if (rawBitmap == null) {
-                // Fallback: thử decode NV21 YUV nếu MJPEG thất bại
-                if (!isUsingYuvFallback) {
-                    Log.w(TAG, "[FALLBACK] MJPEG decode failed, switching to YUV mode")
-                    isUsingYuvFallback = true
-                }
-                rawBitmap = decodeYuvToBitmap(data, frameWidth, frameHeight)
-            } else {
-                if (isUsingYuvFallback) {
-                    Log.i(TAG, "[RECOVERY] MJPEG decode restored")
-                    isUsingYuvFallback = false
-                }
+            // FIX 1 & 2: Pass raw NV21 bytes directly to BoxProcessor
+            // No more decoding here!
+            boxProcessor.updateLogic(data, frameWidth, frameHeight)
+            
+            val duration = System.currentTimeMillis() - startTime
+            if (duration > 100) {
+                Log.w(TAG, "Slow frame processing: ${duration}ms")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error decoding frame", e)
-            rawBitmap?.recycle()
-            return
-        }
-
-        if (rawBitmap == null) return
-
-        var scanBitmap: Bitmap? = null
-        try {
-            // Áp dụng brightness boost nếu cần
-            scanBitmap = applyBrightnessBoost(rawBitmap, Config.BRIGHTNESS_BOOST)
-
-            // Gọi logic xử lý — BoxProcessor chỉ cần Bitmap
-            boxProcessor.updateLogic(scanBitmap)
-        } catch (e: Exception) {
             Log.e(TAG, "Error in processing logic", e)
-        } finally {
-            // Nếu scanBitmap khác rawBitmap (đã tạo mới), recycle rawBitmap
-            if (scanBitmap !== rawBitmap) rawBitmap.recycle()
-            scanBitmap?.recycle()
         }
 
         updateUI()

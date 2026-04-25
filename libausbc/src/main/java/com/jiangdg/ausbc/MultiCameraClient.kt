@@ -801,6 +801,20 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
         }
 
         /**
+         * Set camera focus
+         *
+         * @param focus focus value
+         */
+        open fun setFocus(focus: Int) {}
+
+        /**
+         * Set camera auto focus
+         *
+         * @param enable true enable auto focus
+         */
+        open fun setAutoFocus(enable: Boolean) {}
+
+        /**
          * set encode data call back
          *
          * @param callBack camera encoded data call back, see [IEncodeDataCallBack]

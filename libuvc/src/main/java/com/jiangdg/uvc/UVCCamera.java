@@ -506,6 +506,16 @@ public class UVCCamera {
     }
 
     /**
+     * Set focus absolute value
+     * @param focus focus absolute value
+     */
+    public synchronized void setFocusAbs(final int focus) {
+        if (mNativePtr != 0) {
+            nativeSetFocus(mNativePtr, focus);
+        }
+    }
+
+    /**
      * @param focus_abs
      * @return focus[%]
      */

@@ -331,8 +331,17 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
      *
      * @param enable true enable auto focus
      */
-    fun setAutoFocus(enable: Boolean) {
+    override fun setAutoFocus(enable: Boolean) {
         mUvcCamera?.autoFocus = enable
+    }
+
+    /**
+     * Set focus
+     *
+     * @param focus absolute focus value
+     */
+    override fun setFocus(focus: Int) {
+        mUvcCamera?.setFocusAbs(focus)
     }
 
     /**
