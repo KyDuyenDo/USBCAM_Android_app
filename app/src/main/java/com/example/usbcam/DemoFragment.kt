@@ -1,6 +1,14 @@
 package com.example.usbcam
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.ImageFormat
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -25,15 +33,9 @@ import com.jiangdg.ausbc.callback.IPreviewDataCallBack
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.IAspectRatio
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.ArrayBlockingQueue
 import kotlinx.coroutines.launch
-import org.opencv.android.OpenCVLoader
-import org.opencv.android.Utils
-import org.opencv.core.CvType
-import org.opencv.core.Mat
-import org.opencv.core.MatOfByte
-import org.opencv.imgcodecs.Imgcodecs
-import org.opencv.imgproc.Imgproc
 
 class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
@@ -48,18 +50,7 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     private var mViewBinding: LayoutDashboardBinding? = null
     private lateinit var boxProcessor: BoxProcessor
 
-    // OPTIMIZATION 1: Reuse MatOfByte buffer (avoid allocation per frame)
-    // Lazy initialization after OpenCV loads
-    private lateinit var mMatOfByte: MatOfByte
-
-    //  OPTIMIZATION 2: Pre-allocate all Mats once
-    private lateinit var mBgr: Mat // Decoded BGR from MJPEG
-    private lateinit var mRgba: Mat // RGBA for display/bitmap
-    private lateinit var mGray: Mat // Grayscale for processing
-    private lateinit var mBoosted: Mat // Brightness boosted version
-
-    // YUV fallback (only if MJPEG fails)
-    private var mYuv: Mat? = null
+    // Frame size từ camera
     private var isUsingYuvFallback = false
 
     // Threading
@@ -91,19 +82,8 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (OpenCVLoader.initLocal()) {
-            Log.i(TAG, "OpenCV loaded successfully")
-
-            // Initialize Mat objects after OpenCV library is loaded
-            mMatOfByte = MatOfByte()
-            mBgr = Mat()
-            mRgba = Mat()
-            mGray = Mat()
-            mBoosted = Mat()
-        } else {
-            Log.e(TAG, "OpenCV initialization failed!")
-        }
         boxProcessor = BoxProcessor()
+        Log.i(TAG, "BoxProcessor initialized (ML Kit only, no OpenCV)")
     }
 
     override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View? {
@@ -482,16 +462,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         if (data == null || !isAdded) return
         com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = true
 
-        // OPTIMIZATION 3: Only initialize YUV fallback if needed
         if (frameWidth != width || frameHeight != height) {
             frameWidth = width
             frameHeight = height
             Log.i(TAG, "Frame size: ${width}x${height}, format=$format, bytes=${data.size}")
-
-            // Pre-allocate YUV fallback buffer (lazy init)
-            if (mYuv == null) {
-                mYuv = Mat(height + height / 2, width, CvType.CV_8UC1)
-            }
         }
 
         // FIX 4: Prevent queue backlog when USB lags - drop oldest frame if full
@@ -541,7 +515,6 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     }
 
     private fun processFrame(data: ByteArray) {
-        // Don't decode if fragment is detached
         if (!isAdded) return
 
         val now = System.currentTimeMillis()
@@ -550,74 +523,85 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         if (now - lastProcessTime < (1000L / Config.MAX_PROCESSING_FPS)) return
         lastProcessTime = now
 
+        // Decode MJPEG → Bitmap bằng Android BitmapFactory
+        var rawBitmap: Bitmap? = null
         try {
-            // Decode frame
-            mMatOfByte.fromArray(*data)
-            val decoded = Imgcodecs.imdecode(mMatOfByte, Imgcodecs.IMREAD_COLOR)
+            rawBitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
 
-            if (decoded.empty()) {
-                decoded.release()
+            if (rawBitmap == null) {
+                // Fallback: thử decode NV21 YUV nếu MJPEG thất bại
                 if (!isUsingYuvFallback) {
                     Log.w(TAG, "[FALLBACK] MJPEG decode failed, switching to YUV mode")
                     isUsingYuvFallback = true
                 }
-                mYuv?.put(0, 0, data)
-                Imgproc.cvtColor(mYuv, mRgba, Imgproc.COLOR_YUV2RGBA_NV21)
+                rawBitmap = decodeYuvToBitmap(data, frameWidth, frameHeight)
             } else {
                 if (isUsingYuvFallback) {
                     Log.i(TAG, "[RECOVERY] MJPEG decode restored")
                     isUsingYuvFallback = false
                 }
-                decoded.copyTo(mBgr)
-                decoded.release()
-                Imgproc.cvtColor(mBgr, mRgba, Imgproc.COLOR_BGR2RGBA)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error decoding frame", e)
+            rawBitmap?.recycle()
             return
         }
 
-        if (mRgba.empty()) return
+        if (rawBitmap == null) return
 
-        // Grayscale conversion
-        Imgproc.cvtColor(mRgba, mGray, Imgproc.COLOR_RGBA2GRAY)
-
-        // FIX: Create bitmap và đảm bảo cleanup
         var scanBitmap: Bitmap? = null
         try {
-            scanBitmap = createScanBitmap()
+            // Áp dụng brightness boost nếu cần
+            scanBitmap = applyBrightnessBoost(rawBitmap, Config.BRIGHTNESS_BOOST)
 
-            // Call Update Logic
-            boxProcessor.updateLogic(mGray, scanBitmap)
+            // Gọi logic xử lý — BoxProcessor chỉ cần Bitmap
+            boxProcessor.updateLogic(scanBitmap)
         } catch (e: Exception) {
             Log.e(TAG, "Error in processing logic", e)
         } finally {
-            // CRITICAL: Always recycle bitmap
+            // Nếu scanBitmap khác rawBitmap (đã tạo mới), recycle rawBitmap
+            if (scanBitmap !== rawBitmap) rawBitmap.recycle()
             scanBitmap?.recycle()
         }
 
-        // Update UI
         updateUI()
     }
 
-    // OPTIMIZATION 7: Smart brightness boost
-    private fun createScanBitmap(): Bitmap? {
+    /**
+     * Decode NV21 YUV byte array → Bitmap (fallback khi MJPEG thất bại).
+     */
+    private fun decodeYuvToBitmap(data: ByteArray, width: Int, height: Int): Bitmap? {
+        if (width <= 0 || height <= 0) return null
         return try {
-            val srcMat =
-                    if (Config.BRIGHTNESS_BOOST > 0) {
-                        mRgba.convertTo(mBoosted, -1, 1.0, Config.BRIGHTNESS_BOOST.toDouble())
-                        mBoosted
-                    } else {
-                        mRgba
-                    }
-
-            val bmp = Bitmap.createBitmap(srcMat.cols(), srcMat.rows(), Bitmap.Config.ARGB_8888)
-            Utils.matToBitmap(srcMat, bmp)
-            bmp
+            val yuvImage = YuvImage(data, ImageFormat.NV21, width, height, null)
+            val out = ByteArrayOutputStream()
+            yuvImage.compressToJpeg(Rect(0, 0, width, height), 85, out)
+            val jpegBytes = out.toByteArray()
+            BitmapFactory.decodeByteArray(jpegBytes, 0, jpegBytes.size)
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating scan bitmap", e)
+            Log.e(TAG, "YUV decode error", e)
             null
         }
+    }
+
+    /**
+     * Áp dụng brightness boost bằng Android ColorMatrix.
+     * Nếu boost <= 0, trả về bitmap gốc (không tạo bản sao).
+     */
+    private fun applyBrightnessBoost(source: Bitmap, boost: Float): Bitmap {
+        if (boost <= 0f) return source
+        val result = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        val paint = Paint()
+        val cm = ColorMatrix(floatArrayOf(
+            1f, 0f, 0f, 0f, boost,
+            0f, 1f, 0f, 0f, boost,
+            0f, 0f, 1f, 0f, boost,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        paint.colorFilter = ColorMatrixColorFilter(cm)
+        canvas.drawBitmap(source, 0f, 0f, paint)
+        return result
     }
 
     private fun updateTextView(tv: TextView, newText: String) {
@@ -958,26 +942,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
     override fun onDestroy() {
         super.onDestroy()
         stopProcessingThread()
-        releaseOpenCvResources()
         boxProcessor.release()
-
         toneGen?.release()
-    }
-
-    private fun releaseOpenCvResources() {
-        try {
-            if (::mMatOfByte.isInitialized) {
-                mMatOfByte.release()
-                mBgr.release()
-                mRgba.release()
-                mGray.release()
-                mBoosted.release()
-            }
-            mYuv?.release()
-            Log.d(TAG, "OpenCV resources released")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error releasing OpenCV resources", e)
-        }
+        Log.d(TAG, "DemoFragment destroyed, resources released")
     }
 
     override fun onDestroyView() {

@@ -1,56 +1,88 @@
 package com.example.usbcam
 
+import android.graphics.Bitmap
 import android.util.Log
-import org.opencv.core.*
-import org.opencv.imgproc.Imgproc
 
+/**
+ * Blur detector không dùng OpenCV.
+ * Thuật toán: Tính variance của pixel intensity trên ROI trung tâm của Bitmap.
+ * Variance thấp → ảnh mờ. Variance cao → ảnh sắc nét.
+ */
 class BlurDetector {
 
     companion object {
         private const val TAG = "BlurDetector"
     }
 
-    private val laplacian = Mat()
-    private val mean = MatOfDouble()
-    private val std = MatOfDouble()
-
-    fun check(roi: Mat): Boolean {
-        // ✅ CRITICAL: Track ROI for cleanup
-        var centerRoi: Mat? = null
-
+    /**
+     * Kiểm tra xem bitmap có đủ sắc nét không.
+     * @param bitmap Bitmap màu (ARGB_8888) cần kiểm tra.
+     * @return true nếu ảnh sắc nét, false nếu bị mờ.
+     */
+    fun check(bitmap: Bitmap): Boolean {
         return try {
-            val w = roi.cols()
-            val h = roi.rows()
-            val rw = (w * Config.ROI_WIDTH_RATIO).toInt()
-            val rh = (h * Config.ROI_HEIGHT_RATIO).toInt()
-            val centerH = (w - rw) / 2
-            val centerV = (h - rh) / 2
+            val w = bitmap.width
+            val h = bitmap.height
 
-            centerRoi = roi.submat(Rect(centerH, centerV, rw, rh))
+            // Lấy ROI trung tâm
+            val roiW = (w * Config.ROI_WIDTH_RATIO).toInt().coerceAtLeast(10)
+            val roiH = (h * Config.ROI_HEIGHT_RATIO).toInt().coerceAtLeast(10)
+            val roiX = (w - roiW) / 2
+            val roiY = (h - roiH) / 2
 
-            Imgproc.Laplacian(centerRoi, laplacian, CvType.CV_64F)
-            Core.meanStdDev(laplacian, mean, std)
-            val variance = std.get(0, 0)[0].let { it * it }
-
+            val variance = computeLuminanceVariance(bitmap, roiX, roiY, roiW, roiH)
             val isSharp = variance > Config.BLUR_THRESHOLD
+
+            Log.v(TAG, "Blur check: variance=${"%.2f".format(variance)}, threshold=${Config.BLUR_THRESHOLD}, isSharp=$isSharp")
             isSharp
 
         } catch (e: Exception) {
             Log.e(TAG, "Blur check error", e)
             false
-        } finally {
-            // ✅ CRITICAL: Always cleanup ROI
-            centerRoi?.release()
         }
     }
 
-    fun release() {
-        try {
-            laplacian.release()
-            mean.release()
-            std.release()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error releasing resources", e)
+    /**
+     * Tính variance của luminance (độ sáng) trong vùng ROI.
+     * Dùng công thức: Var = E[X²] - E[X]² để tránh 2 pass.
+     */
+    private fun computeLuminanceVariance(
+        bitmap: Bitmap,
+        roiX: Int, roiY: Int,
+        roiW: Int, roiH: Int
+    ): Double {
+        // Sample pixels để tăng tốc (lấy mỗi 2 pixels thay vì toàn bộ)
+        val step = 2
+        var sum = 0.0
+        var sumSq = 0.0
+        var count = 0
+
+        var y = roiY
+        while (y < roiY + roiH) {
+            var x = roiX
+            while (x < roiX + roiW) {
+                val pixel = bitmap.getPixel(x, y)
+                // Luminance từ RGB (BT.601)
+                val r = (pixel shr 16) and 0xFF
+                val g = (pixel shr 8) and 0xFF
+                val b = pixel and 0xFF
+                val lum = 0.299 * r + 0.587 * g + 0.114 * b
+
+                sum += lum
+                sumSq += lum * lum
+                count++
+                x += step
+            }
+            y += step
         }
+
+        if (count == 0) return 0.0
+        val mean = sum / count
+        return (sumSq / count) - (mean * mean)
+    }
+
+    /** Không cần release vì không giữ native resources */
+    fun release() {
+        // No-op: không dùng OpenCV Mat
     }
 }

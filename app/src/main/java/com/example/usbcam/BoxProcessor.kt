@@ -1,10 +1,19 @@
 package com.example.usbcam
 
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.util.Log
-import org.opencv.core.Mat
-import org.opencv.objdetect.BarcodeDetector
 
+/**
+ * BoxProcessor — không còn phụ thuộc OpenCV.
+ *
+ * Thay đổi chính:
+ * - Presence detection: dùng kết quả ML Kit barcode scan thay vì
+ *   OpenCV BarcodeDetector + Mat (nếu ML Kit scan thấy barcode → có vật thể).
+ * - BlurDetector: nhận Bitmap thay vì Mat.
+ * - updateLogic: nhận Bitmap thay vì (Mat, Bitmap?).
+ * - Position tracking: Capture barcode and PO positions for downstream processing
+ */
 class BoxProcessor {
 
     companion object {
@@ -21,48 +30,56 @@ class BoxProcessor {
     @Volatile var motionLevel: String = "LOW"
     @Volatile var conveyorDirection: String = ""
 
+    // ================= POSITION TRACKING =================
+    // Bounding boxes for barcode and PO
+    @Volatile var barcodeBox: RectF? = null
+    @Volatile var poBox: RectF? = null
+
     // ================= INTERNAL =================
     private var stateStartTime = 0L
     private var lastScanTime = 0L
 
     private var frameProcessCount = 0L
-    private var lastCleanupTime = 0L
 
-    // Helpers
+    // ML Kit barcode decoder (đã có sẵn, dùng cho cả presence + decode)
     private val barcodeDecoder = BarcodeDecoder()
+
+    // Tracker: không đổi (pure Kotlin)
     private val tracker = TrackingManager()
 
-    // NEW COMPONENTS
-    private val opencvBarcodeDetector = BarcodeDetector()
-    private val barcodePoints = Mat()
-    private val poExtractor = POExtractor()
+    // BlurDetector: đã viết lại — nhận Bitmap
     private val blurDetector = BlurDetector()
 
+    // PO Extractor: đã dùng ML Kit Text Recognition, không đổi
+    private val poExtractor = POExtractor()
+
     // =========================================================
-    // MAIN UPDATE
+    // MAIN UPDATE — nhận Bitmap thay vì (gray: Mat, bitmap: Bitmap?)
     // =========================================================
-    fun updateLogic(gray: Mat, bitmap: Bitmap?) {
+    fun updateLogic(bitmap: Bitmap) {
         val now = System.currentTimeMillis()
         frameProcessCount++
 
-        // CRITICAL: Periodic cleanup mỗi 25 giây (~500 frames @ 20 FPS)
+        // CRITICAL: Periodic cleanup mỗi ~25 giây (~500 frames @ 20 FPS)
         if (frameProcessCount % CLEANUP_INTERVAL == 0L) {
             performPeriodicCleanup()
-            lastCleanupTime = now
             Log.i(
-                    TAG,
-                    "🧹 Periodic cleanup #${frameProcessCount / CLEANUP_INTERVAL} " +
-                            "(frame $frameProcessCount, uptime ${(now - stateStartTime) / 1000}s)"
+                TAG,
+                "🧹 Periodic cleanup #${frameProcessCount / CLEANUP_INTERVAL} " +
+                        "(frame $frameProcessCount, uptime ${(now - stateStartTime) / 1000}s)"
             )
         }
 
-        // 1. Detect Barcode Presence using OpenCV's BarcodeDetector
-        val presence = try {
-            opencvBarcodeDetector.detect(gray, barcodePoints)
+        // 1. Presence detection bằng ML Kit barcode scanner
+        //    Nếu ML Kit phát hiện barcode → có vật thể trên băng chuyền.
+        //    Dùng throttle nhẹ hơn ở đây vì chỉ cần biết có/không.
+        val presenceScanResult = try {
+            barcodeDecoder.scan(bitmap)
         } catch (e: Exception) {
-            Log.e(TAG, "OpenCV Barcode detection error", e)
-            false
+            Log.e(TAG, "Presence scan error", e)
+            null
         }
+        val presence = presenceScanResult != null
 
         when (currentState) {
             AppState.IDLE -> {
@@ -70,7 +87,6 @@ class BoxProcessor {
                 motionLevel = "LOW"
                 conveyorDirection = ""
 
-                // Transition logic: Presence (Motion) -> SCANNING
                 if (presence) {
                     Log.i(TAG, "STATE: IDLE -> SCANNING (Presence Detected)")
                     transitionTo(AppState.SCANNING)
@@ -79,40 +95,35 @@ class BoxProcessor {
             AppState.SCANNING -> {
                 feedbackMessage = "SCANNING..."
 
-                // Timeout Check
-                // Timeout Check
-                val elapsed = now - stateStartTime
                 if (!presence) {
-                    Log.i(TAG, "STATE: IDLE -> SCANNING (Presence Detected)")
+                    Log.i(TAG, "STATE: SCANNING -> IDLE (Presence Lost)")
                     transitionTo(AppState.IDLE)
-                }
-//                if (elapsed > Config.SCAN_TIMEOUT_MS) {
-//                    Log.i(TAG, "SCAN TIMEOUT -> Resetting to IDLE")
-//                    transitionTo(AppState.IDLE)
-//                    return
-//                }
-
-                // Blur Check (Using new component)
-                if (!blurDetector.check(gray)) {
                     return
                 }
 
-                if (bitmap == null) return
+                // Blur Check (nhận Bitmap)
+                if (!blurDetector.check(bitmap)) {
+                    return
+                }
 
                 // Throttle Scan
                 if (now - lastScanTime < Config.SCAN_THROTTLE_MS) return
                 lastScanTime = now
 
-                // Synchronous Scan
-                val result = barcodeDecoder.scan(bitmap)
+                // Dùng lại kết quả presence scan nếu có (tránh scan 2 lần)
+                val result = presenceScanResult
                 if (result != null) {
                     Log.i(TAG, "BARCODE FOUND: ${result.value}")
                     barcode = result.value
+                    barcodeBox = result.box  // Store barcode position
+                    Log.d(TAG, "Barcode position: $barcodeBox")
 
-                    // Extract PO (Using new component)
+                    // Extract PO with position
                     val poResult = poExtractor.extract(bitmap, result.value)
                     if (poResult != null) {
-                        po = poResult
+                        po = poResult.po
+                        poBox = poResult.box  // Store PO position
+                        Log.d(TAG, "PO position: $poBox")
                     }
 
                     // Initialize Tracking
@@ -121,40 +132,27 @@ class BoxProcessor {
                     if (po != null) {
                         Log.i(TAG, "BARCODE + PO FOUND -> Verifying")
                         transitionTo(AppState.VERIFYING)
-                    } else {
-                        // Keep scanning if PO missing (or maybe we just stay in SCANNING and
-                        // retrying PO extraction is implied by the loop)
-                        // Actually, if barcode is found but PO is not, we are technically still
-                        // SCANNING for PO
-                        // while tracking the barcode.
-                        // BUT, to keep it simple as per "continue extracting text until a suitable
-                        // PO is found",
-                        // we can stay in SCANNING, but we need to update tracker so we don't lose
-                        // the box.
-                        // The current code structure in SCANNING re-detects every time.
-                        // Ideally we should switch to a state where we track AND scan for PO.
-                        // For now let's stick to the plan: Stay in SCANNING if PO is null.
                     }
                 }
             }
             AppState.VERIFYING -> {
                 feedbackMessage = "VERIFYING..."
 
-                if (bitmap == null) return
+                val result = try {
+                    barcodeDecoder.scan(bitmap)
+                } catch (e: Exception) {
+                    null
+                }
 
-                val result = barcodeDecoder.scan(bitmap)
                 if (result != null) {
-                    // Update Tracker
                     tracker.updateDetection(result.box, now)
 
-                    // Check for New Box
                     if (tracker.isLikelyNewBox(result.box)) {
                         Log.i(TAG, "NEW BOX DETECTED (during verify) -> Resetting")
                         transitionTo(AppState.IDLE)
                         return
                     }
                 } else {
-                    // Miss Logic
                     val shouldReset = tracker.updateMiss(now)
                     if (shouldReset) {
                         Log.i(TAG, "TRACKING LOST (during verify) -> Resetting")
@@ -165,14 +163,15 @@ class BoxProcessor {
             AppState.DECODED -> {
                 feedbackMessage = "TRACKING: $motionLevel"
 
-                if (bitmap == null) return
+                val result = try {
+                    barcodeDecoder.scan(bitmap)
+                } catch (e: Exception) {
+                    null
+                }
 
-                val result = barcodeDecoder.scan(bitmap)
                 if (result != null) {
-                    // Update Tracker
                     tracker.updateDetection(result.box, now)
 
-                    // Check for New Box
                     if (tracker.isLikelyNewBox(result.box)) {
                         Log.i(TAG, "NEW BOX DETECTED -> Resetting")
                         transitionTo(AppState.IDLE)
@@ -180,9 +179,7 @@ class BoxProcessor {
                     }
 
                     motionLevel = tracker.getMotionLevel()
-                    // Update direction logic if needed
                 } else {
-                    // Miss Logic
                     val shouldReset = tracker.updateMiss(now)
                     if (shouldReset) {
                         Log.i(TAG, "TRACKING LOST -> Resetting")
@@ -204,6 +201,8 @@ class BoxProcessor {
         if (newState == AppState.IDLE) {
             barcode = null
             po = null
+            barcodeBox = null
+            poBox = null
             poExtractor.reset()
             tracker.reset()
         }
@@ -223,21 +222,14 @@ class BoxProcessor {
         }
     }
 
-    /** ✅ Periodic cleanup để giải phóng native memory */
+    /** Periodic cleanup để giải phóng Java heap */
     private fun performPeriodicCleanup() {
         try {
-            // Force System.gc() để dọn Java heap
             System.gc()
-
-            // Log memory info
             val runtime = Runtime.getRuntime()
             val usedMem = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024
-            val maxMem = runtime.maxMemory() / 1024 / 1024
-
-            Log.d(
-                    TAG,
-                    "Memory after cleanup: ${usedMem}MB / ${maxMem}MB (${usedMem * 100 / maxMem}%)"
-            )
+            val maxMem  = runtime.maxMemory() / 1024 / 1024
+            Log.d(TAG, "Memory after cleanup: ${usedMem}MB / ${maxMem}MB (${usedMem * 100 / maxMem}%)")
         } catch (e: Exception) {
             Log.e(TAG, "Error during periodic cleanup", e)
         }
@@ -246,9 +238,6 @@ class BoxProcessor {
     fun release() {
         try {
             barcodeDecoder.close()
-            barcodePoints.release()
-            // BarcodeDetector doesn't have an explicit release in Java API usually, 
-            // GraphicalCodeDetector might not have close() either, but native memory is handled by GC/finalize
             poExtractor.release()
             blurDetector.release()
         } catch (_: Exception) {}

@@ -50,7 +50,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(project(":openCV"))
     implementation(project(":libuvc"))
     implementation(project(":libnative"))
     testImplementation(libs.junit)

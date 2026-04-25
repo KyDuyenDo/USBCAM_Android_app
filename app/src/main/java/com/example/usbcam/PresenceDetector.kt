@@ -1,162 +1,151 @@
 package com.example.usbcam
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.util.Log
-import java.util.ArrayList
-import org.opencv.core.*
-import org.opencv.imgproc.Imgproc
 
+/**
+ * PresenceDetector — không còn dùng OpenCV.
+ *
+ * Thuật toán thay thế (pure Android):
+ * 1. Tính gradient ngang đơn giản (|pixel[x] - pixel[x-1]|) bằng luminance array
+ * 2. Threshold gradient để tạo "binary edge map"
+ * 3. Đếm vùng edge liên tục (approximated bằng column-wise sum)
+ * 4. Kiểm tra density và aspect ratio của vùng edge lớn nhất
+ *
+ * Đây là phiên bản đơn giản hóa nhưng đủ để phát hiện barcode stripe pattern.
+ */
 class PresenceDetector {
 
     companion object {
         private const val TAG = "PresenceDetector"
+
+        // Bước sampling để tăng tốc
+        private const val SAMPLE_STEP = 3
+
+        // Ngưỡng gradient để coi là edge
+        private const val EDGE_THRESHOLD = 30
+
+        // Tỷ lệ diện tích tối thiểu so với frame (3%)
+        private const val MIN_AREA_RATIO = 0.03
+
+        // Aspect ratio tối thiểu của vùng barcode (rộng hơn cao)
+        private const val MIN_ASPECT_RATIO = 1.0
+
+        // Density của barcode texture (5%–45% white pixels)
+        private const val MIN_DENSITY = 0.05
+        private const val MAX_DENSITY = 0.45
     }
 
-    // ================= OPENCV BUFFERS =================
-    private val gradX = Mat()
-    private val gradY = Mat()
-    private val absGradX = Mat()
-    private val absGradY = Mat()
-    private val fullGrad = Mat()
+    fun detect(bitmap: Bitmap): Boolean {
+        return try {
+            val w = bitmap.width
+            val h = bitmap.height
 
-    private val blurredMat = Mat()
-    private val thresholdMat = Mat()
-    private val morphMat = Mat()
-    private val hierarchy = Mat()
+            // 1. Tính horizontal gradient map (sampled)
+            val edgeCols = w / SAMPLE_STEP
+            val edgeRows = h / SAMPLE_STEP
 
-    // Morphology kernels
-    private val closeKernel =
-        Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Config.MORPH_CLOSE_KERNEL)
-    private val erodeKernel =
-        Imgproc.getStructuringElement(Imgproc.MORPH_RECT, Config.MORPH_ERODE_KERNEL)
+            // Tổng edge theo mỗi column (để tìm vùng barcode theo chiều ngang)
+            val colEdgeSum = IntArray(edgeCols)
+            val rowEdgeSum = IntArray(edgeRows)
 
-    fun detect(gray: Mat): Boolean {
-        // ✅ CRITICAL: Track all contours for cleanup
-        var contours: ArrayList<MatOfPoint>? = null
-        var roiCheck: Mat? = null
+            var totalEdge = 0
+            var ri = 0
+            var y = SAMPLE_STEP
+            while (y < h) {
+                var ci = 0
+                var x = SAMPLE_STEP
+                while (x < w) {
+                    val lum    = luminance(bitmap.getPixel(x, y))
+                    val lumL   = luminance(bitmap.getPixel(x - SAMPLE_STEP, y))
+                    val lumU   = luminance(bitmap.getPixel(x, y - SAMPLE_STEP))
+                    val grad   = maxOf(Math.abs(lum - lumL), Math.abs(lum - lumU))
+                    val isEdge = if (grad > EDGE_THRESHOLD) 1 else 0
 
-        try {
-             // 1. Sobel Gradient
-            Imgproc.Sobel(gray, gradX, CvType.CV_16S, 1, 0)
-            Imgproc.Sobel(gray, gradY, CvType.CV_16S, 0, 1)
-
-            Core.convertScaleAbs(gradX, absGradX, Config.GRADIENT_SCALE, 0.0)
-            Core.convertScaleAbs(gradY, absGradY, Config.GRADIENT_SCALE, 0.0)
-            Core.subtract(absGradX, absGradY, fullGrad)
-
-            // 2. Blur & Threshold
-            Imgproc.blur(fullGrad, blurredMat, Config.BLUR_KERNEL_SIZE)
-            Imgproc.threshold(
-                blurredMat,
-                thresholdMat,
-                Config.BINARY_THRESHOLD,
-                255.0,
-                Imgproc.THRESH_BINARY
-            )
-
-            // 3. Morphology
-            Imgproc.morphologyEx(
-                thresholdMat,
-                morphMat,
-                Imgproc.MORPH_CLOSE,
-                closeKernel,
-                Point(-1.0, -1.0),
-                Config.MORPH_CLOSE_ITERATIONS
-            )
-            Imgproc.morphologyEx(
-                morphMat,
-                morphMat,
-                Imgproc.MORPH_ERODE,
-                erodeKernel,
-                Point(-1.0, -1.0),
-                Config.MORPH_ERODE_ITERATIONS
-            )
-
-            // 4. Contours
-            contours = ArrayList<MatOfPoint>()
-            Imgproc.findContours(
-                morphMat,
-                contours,
-                hierarchy,
-                Imgproc.RETR_EXTERNAL,
-                Imgproc.CHAIN_APPROX_SIMPLE
-            )
-
-            if (contours.isEmpty()) {
-                return false
+                    colEdgeSum[ci] += isEdge
+                    rowEdgeSum[ri] += isEdge
+                    totalEdge += isEdge
+                    ci++
+                    x += SAMPLE_STEP
+                }
+                ri++
+                y += SAMPLE_STEP
             }
 
-            var largestArea = 0.0
-            var largestContour: MatOfPoint? = null
+            val totalSampled = edgeCols * edgeRows
+            val frameArea    = totalSampled
 
-            for (cnt in contours) {
-                val area = Imgproc.contourArea(cnt)
-                if (area > largestArea) {
-                    largestArea = area
-                    largestContour = cnt
+            // 2. Tìm bounding box của vùng edge đủ lớn
+            val edgeDensityGlobal = totalEdge.toDouble() / frameArea
+            if (edgeDensityGlobal < MIN_AREA_RATIO) return false
+
+            // 3. Tìm span cột và hàng có edge đủ cao
+            val colThreshold = edgeRows * 0.05  // 5% rows cần có edge
+            val rowThreshold = edgeCols * 0.05
+
+            var colMin = edgeCols; var colMax = -1
+            for (ci in colEdgeSum.indices) {
+                if (colEdgeSum[ci] >= colThreshold) {
+                    if (ci < colMin) colMin = ci
+                    if (ci > colMax) colMax = ci
                 }
             }
 
-            val frameArea = gray.rows() * gray.cols()
-            val minArea = frameArea * Config.MIN_BARCODE_AREA_RATIO
-
-            if (largestContour == null || largestArea < minArea) {
-                return false
+            var rowMin = edgeRows; var rowMax = -1
+            for (ri2 in rowEdgeSum.indices) {
+                if (rowEdgeSum[ri2] >= rowThreshold) {
+                    if (ri2 < rowMin) rowMin = ri2
+                    if (ri2 > rowMax) rowMax = ri2
+                }
             }
 
-            val r = Imgproc.boundingRect(largestContour)
-            val ratio = r.width.toDouble() / r.height
+            if (colMax < colMin || rowMax < rowMin) return false
 
-            if (ratio < Config.MIN_ASPECT_RATIO) {
-                return false
+            val bboxW = (colMax - colMin + 1).toDouble()
+            val bboxH = (rowMax - rowMin + 1).toDouble()
+            val bboxArea = bboxW * bboxH
+
+            // 4. Kiểm tra area ratio
+            if (bboxArea / frameArea < MIN_AREA_RATIO) return false
+
+            // 5. Kiểm tra aspect ratio
+            val aspectRatio = bboxW / bboxH.coerceAtLeast(1.0)
+            if (aspectRatio < MIN_ASPECT_RATIO) return false
+
+            // 6. Kiểm tra barcode texture density trong vùng bbox
+            val edgeInBbox = (colMin..colMax).sumOf { ci ->
+                val rowContrib = (rowMin..rowMax).count { ri2 ->
+                    // Xấp xỉ: dùng rowEdgeSum thay vì scan lại từng pixel
+                    rowEdgeSum[ri2] > 0
+                }
+                if (colEdgeSum[ci] > 0) rowContrib else 0
             }
 
-            // 5. Texture Validation
-            roiCheck = thresholdMat.submat(r)
-            val isValid = validateBarcodeTexture(roiCheck)
+            val density = edgeInBbox.toDouble() / bboxArea
+            val isValidTexture = density in MIN_DENSITY..MAX_DENSITY
 
-            return isValid
+            Log.v(TAG, "Presence: aspectRatio=${"%.2f".format(aspectRatio)}, " +
+                    "bboxArea/frame=${"%.3f".format(bboxArea / frameArea)}, " +
+                    "density=${"%.3f".format(density)}, valid=$isValidTexture")
+
+            isValidTexture
 
         } catch (e: Exception) {
             Log.e(TAG, "Presence error", e)
-            return false
-        } finally {
-            // ✅ CRITICAL: Always cleanup contours and ROI
-            contours?.forEach { it.release() }
-            roiCheck?.release()
+            false
         }
     }
 
-    private fun validateBarcodeTexture(binaryROI: Mat): Boolean {
-        val cols = binaryROI.cols()
-        val rows = binaryROI.rows()
-        val totalPixels = rows * cols
-
-        if (totalPixels == 0) return false
-        if (rows < 5 || cols < 10) return false
-
-        val nonZero = Core.countNonZero(binaryROI)
-        val density = nonZero.toDouble() / totalPixels
-
-        return density in 0.05..0.45
+    private fun luminance(pixel: Int): Int {
+        val r = Color.red(pixel)
+        val g = Color.green(pixel)
+        val b = Color.blue(pixel)
+        return (0.299 * r + 0.587 * g + 0.114 * b).toInt()
     }
 
+    /** Không có native resources */
     fun release() {
-        try {
-            gradX.release()
-            gradY.release()
-            absGradX.release()
-            absGradY.release()
-            fullGrad.release()
-
-            blurredMat.release()
-            thresholdMat.release()
-            morphMat.release()
-            hierarchy.release()
-
-            closeKernel.release()
-            erodeKernel.release()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error releasing resources", e)
-        }
+        // No-op
     }
 }
