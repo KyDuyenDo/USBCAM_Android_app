@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -31,6 +32,14 @@ class RfidConnectionManager private constructor(private val context: Context) {
         // Retry settings
         private const val AUTO_CONNECT_RETRY_COUNT = 3
         private const val RETRY_DELAY_MS = 1000L
+
+        // Watchdog reconnect settings
+        /** Khoảng thời gian watchdog kiểm tra định kỳ (ms) */
+        private const val WATCHDOG_CHECK_INTERVAL_MS = 2000L
+        /** Độ trễ ban đầu trước lần reconnect đầu tiên (ms) */
+        private const val RECONNECT_INITIAL_DELAY_MS = 3000L
+        /** Độ trễ tối đa giữa các lần reconnect (ms) */
+        private const val RECONNECT_MAX_DELAY_MS = 30000L
 
         @Volatile private var instance: RfidConnectionManager? = null
 
@@ -75,9 +84,16 @@ class RfidConnectionManager private constructor(private val context: Context) {
     private val rfidManager: RfidManager = RfidManager.getInstance(context)
     private var eventCallback: RfidEventCallback? = null
     private var autoConnectJob: Job? = null
+    private var watchdogJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
 
     private var isInitialized = false
+
+    /** Số lần reconnect liên tiếp thất bại (để tính backoff) */
+    @Volatile private var reconnectFailCount = 0
+
+    /** true = đang trong quá trình reconnect, tránh chạy song song */
+    @Volatile private var isReconnecting = false
 
     // Connection state
     var isConnected: Boolean = false
@@ -102,7 +118,8 @@ class RfidConnectionManager private constructor(private val context: Context) {
                         isConnected = connected
                         if (connected) {
                             Log.i(TAG, "Connected: $message")
-                            // Check if this was auto-connect or manual
+                            reconnectFailCount = 0
+                            isReconnecting = false
                             val isAuto =
                                     message.contains("auto", ignoreCase = true) ||
                                             message.contains("mặc định", ignoreCase = true)
@@ -110,6 +127,8 @@ class RfidConnectionManager private constructor(private val context: Context) {
                         } else {
                             Log.w(TAG, "Disconnected: $message")
                             eventCallback?.onDisconnected()
+                            // Kích hoạt reconnect ngay khi nhận tín hiệu mất kết nối
+                            scheduleReconnect()
                         }
                     }
                 }
@@ -129,6 +148,9 @@ class RfidConnectionManager private constructor(private val context: Context) {
 
         // Tự động kết nối sau khi init
         autoConnect()
+
+        // Khởi động watchdog kiểm tra kết nối định kỳ
+        startWatchdog()
     }
 
     /** Tự động kết nối với VID/PID mặc định */
@@ -196,9 +218,92 @@ class RfidConnectionManager private constructor(private val context: Context) {
                                 TAG,
                                 "⚠️ Auto-connect FAILED after $AUTO_CONNECT_RETRY_COUNT attempts"
                         )
+                        reconnectFailCount++
+                        isReconnecting = false
                         eventCallback?.onAutoConnectFailed()
                     }
                 }
+    }
+
+    // ─── RFID Watchdog & Auto-Reconnect ───────────────────────────────────────
+
+    /**
+     * Khởi động watchdog định kỳ kiểm tra trạng thái kết nối.
+     * Nếu phát hiện mất kết nối mà chưa có job reconnect, sẽ tự lên lịch kết nối lại.
+     */
+    private fun startWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = scope.launch {
+            Log.d(TAG, "🐕 RFID Watchdog started")
+            while (isActive) {
+                delay(WATCHDOG_CHECK_INTERVAL_MS)
+                if (!isConnected && !isReconnecting && isInitialized) {
+                    Log.w(TAG, "🐕 Watchdog: RFID disconnected — scheduling reconnect")
+                    scheduleReconnect()
+                }
+            }
+        }
+    }
+
+    private fun stopWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = null
+        Log.d(TAG, "🐕 RFID Watchdog stopped")
+    }
+
+    private fun scheduleReconnect() {
+        if (isReconnecting || isConnected) return
+        isReconnecting = true
+
+        val backoffMs = minOf(
+            RECONNECT_INITIAL_DELAY_MS * (1L shl reconnectFailCount.coerceAtMost(4)),
+            RECONNECT_MAX_DELAY_MS
+        )
+        Log.i(TAG, "🔄 RFID reconnect in ${backoffMs}ms (attempt #${reconnectFailCount + 1})")
+
+        autoConnectJob?.cancel()
+        autoConnectJob = scope.launch {
+            delay(backoffMs)
+            if (!isConnected && isInitialized) {
+                Log.i(TAG, "🔌 Attempting RFID reconnect — soft-resetting SDK first...")
+
+                // [BUG#2 FIX] Soft-reset: giải phóng usbCore cũ, GIỮ receiver
+                // → tránh zombie usbCore và tránh double-register receiver (BUG#1)
+                try {
+                    rfidManager.softReset()
+                } catch (e: Exception) {
+                    Log.e(TAG, "softReset error: ${e.message}", e)
+                }
+
+                // Delay ngắn để USB stack ổn định sau khi release
+                delay(200)
+
+                // Khởi tạo lại usbCore (receiver đã có, softReset giữ lại)
+                try {
+                    rfidManager.init()
+                } catch (e: Exception) {
+                    Log.e(TAG, "init error during reconnect: ${e.message}", e)
+                    reconnectFailCount++
+                    isReconnecting = false
+                    return@launch
+                }
+
+                // Thực hiện kết nối lại
+                rfidManager.connectDevice(DEFAULT_PRODUCT_ID, DEFAULT_VENDOR_ID)
+
+                // Đợi kết quả từ onUsbConnectDone callback
+                delay(2500)
+
+                if (!isConnected) {
+                    reconnectFailCount++
+                    isReconnecting = false
+                    Log.w(TAG, "⚠️ RFID reconnect attempt failed (total fails: $reconnectFailCount)")
+                }
+                // Nếu thành công → onConnectionStatus(true) reset reconnectFailCount + isReconnecting
+            } else {
+                isReconnecting = false
+            }
+        }
     }
 
     /** Kết nối thủ công với PID/VID chỉ định */
@@ -237,6 +342,14 @@ class RfidConnectionManager private constructor(private val context: Context) {
         isScanning = false
     }
 
+    fun forceStopScanning() {
+        if (isConnected) {
+            Log.i(TAG, "⏹️ Force-stopping RFID scan...")
+            rfidManager.stopScanning()
+        }
+        isScanning = false
+    }
+
     /** Reset/Clear the device state when transitioning to IDLE using Module Init Cmd */
     fun clearDeviceState() {
         if (!isConnected) return
@@ -258,10 +371,13 @@ class RfidConnectionManager private constructor(private val context: Context) {
     fun release() {
         Log.i(TAG, "🧹 Releasing resources...")
         autoConnectJob?.cancel()
+        stopWatchdog()
+        isReconnecting = false
         stopScanning()
         rfidManager.release()
         isInitialized = false
         isConnected = false
+        reconnectFailCount = 0
     }
 
     /** Lấy VID/PID mặc định */

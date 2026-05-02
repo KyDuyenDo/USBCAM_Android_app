@@ -4,16 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 import android.util.Log
 
-/**
- * BoxProcessor — không còn phụ thuộc OpenCV.
- *
- * Thay đổi chính:
- * - Presence detection: dùng kết quả ML Kit barcode scan thay vì
- *   OpenCV BarcodeDetector + Mat (nếu ML Kit scan thấy barcode → có vật thể).
- * - BlurDetector: nhận Bitmap thay vì Mat.
- * - updateLogic: nhận Bitmap thay vì (Mat, Bitmap?).
- * - Position tracking: Capture barcode and PO positions for downstream processing
- */
 class BoxProcessor {
 
     companion object {
@@ -53,49 +43,33 @@ class BoxProcessor {
     // PO Extractor: đã dùng ML Kit Text Recognition, không đổi
     private val poExtractor = POExtractor()
 
-    // =========================================================
-    // MAIN UPDATE — nhận Bitmap thay vì (gray: Mat, bitmap: Bitmap?)
-    // =========================================================
-    fun updateLogic(bitmap: Bitmap) {
-        val now = System.currentTimeMillis()
-        frameProcessCount++
-
-        // CRITICAL: Periodic cleanup mỗi ~25 giây (~500 frames @ 20 FPS)
-        if (frameProcessCount % CLEANUP_INTERVAL == 0L) {
-            performPeriodicCleanup()
-            Log.i(TAG, "🧹 Periodic cleanup #${frameProcessCount / CLEANUP_INTERVAL} (frame $frameProcessCount)")
-        }
-
-        val presenceScanResult = try {
-            barcodeDecoder.scan(bitmap)
-        } catch (e: Exception) {
-            null
-        }
-        processInternal(bitmap, presenceScanResult, now)
-    }
-
-    /**
-     * Tương tự updateLogic(Bitmap) nhưng dùng data NV21 để tránh decode/allocate Bitmap
-     */
     fun updateLogic(data: ByteArray, width: Int, height: Int) {
         val now = System.currentTimeMillis()
         frameProcessCount++
 
         if (frameProcessCount % CLEANUP_INTERVAL == 0L) {
             performPeriodicCleanup()
+            Log.i(TAG, "🧹 Periodic cleanup #${frameProcessCount / CLEANUP_INTERVAL} (frame $frameProcessCount)")
         }
 
-        // 1. Presence detection bằng NV21
+        // 1. Presence detection bằng NV21 trực tiếp (cực nhanh)
         val presenceScanResult = try {
             barcodeDecoder.scan(data, width, height)
         } catch (e: Exception) {
             null
         }
 
-        // Cho các bước cần Bitmap (như POExtractor), chúng ta sẽ convert sau nếu cần
-        // Nhưng phần lớn thời gian (IDLE/SCANNING blur) thì không cần
-        processInternal(data, width, height, presenceScanResult, now)
+        // 2. Lazy conversion: Chỉ tạo Bitmap khi thực sự cần thiết (khi phát hiện vật thể hoặc đang Verify)
+        // Nếu ở trạng thái IDLE và không có presence -> bỏ qua convert
+        if (currentState == AppState.IDLE && presenceScanResult == null) {
+            feedbackMessage = "READY"
+        } else {
+            // Chuyển đổi NV21 -> Bitmap sử dụng Bitmap Pool (không alloc thêm object mới)
+            val bitmap = nv21ToBitmap(data, width, height)
+            processInternal(bitmap, presenceScanResult, now)
+        }
     }
+
 
     private fun processInternal(bitmap: Bitmap, presenceScanResult: BarcodeDecoder.Result?, now: Long) {
         val presence = presenceScanResult != null
@@ -123,53 +97,46 @@ class BoxProcessor {
                 if (result != null) {
                     tracker.updateDetection(result.box, now)
                     if (tracker.isLikelyNewBox(result.box)) {
-                        transitionTo(AppState.DECODED)
+                        Log.i(TAG, "NEW BOX DETECTED (during verify) -> Resetting")
+                        transitionTo(AppState.IDLE)
+                        return
+                    }
+                } else {
+                    val shouldReset = tracker.updateMiss(now)
+                    if (shouldReset) {
+                        Log.i(TAG, "TRACKING LOST (during verify) -> Resetting")
+                        transitionTo(AppState.IDLE)
                     }
                 }
             }
             AppState.DECODED -> {
-                feedbackMessage = "DONE"
-                if (!presence) transitionTo(AppState.IDLE)
-            }
-        }
-    }
+                feedbackMessage = "TRACKING: $motionLevel"
+                val result = presenceScanResult ?: try { barcodeDecoder.scan(bitmap) } catch (e: Exception) { null }
 
-    private fun processInternal(data: ByteArray, width: Int, height: Int, presenceScanResult: BarcodeDecoder.Result?, now: Long) {
-        val presence = presenceScanResult != null
-
-        when (currentState) {
-            AppState.IDLE -> {
-                feedbackMessage = "READY"
-                if (presence) transitionTo(AppState.SCANNING)
-            }
-            AppState.SCANNING -> {
-                feedbackMessage = "SCANNING..."
-                if (!presence) {
-                    transitionTo(AppState.IDLE)
-                    return
-                }
-                if (!blurDetector.check(data, width, height)) return
-                if (now - lastScanTime < Config.SCAN_THROTTLE_MS) return
-                lastScanTime = now
-
-                // Cần Bitmap để Extract PO
-                val bitmap = nv21ToBitmap(data, width, height)
-                handleDetection(bitmap, presenceScanResult, now)
-                bitmap.recycle()
-            }
-            AppState.VERIFYING -> {
-                feedbackMessage = "VERIFYING..."
-                val result = presenceScanResult ?: try { barcodeDecoder.scan(data, width, height) } catch (e: Exception) { null }
                 if (result != null) {
                     tracker.updateDetection(result.box, now)
                     if (tracker.isLikelyNewBox(result.box)) {
-                        transitionTo(AppState.DECODED)
+                        Log.i(TAG, "NEW BOX DETECTED -> Resetting")
+                        transitionTo(AppState.IDLE)
+                        return
+                    }
+                    motionLevel = tracker.getMotionLevel()
+                } else {
+                    val shouldReset = tracker.updateMiss(now)
+                    if (shouldReset) {
+                        // Cooldown: Đảm bảo hộp có ít nhất 2 giây để đi ra khỏi khung hình
+                        // Tránh việc reset quá sớm do mất barcode vì mờ nhòe (motion blur)
+                        if (now - stateStartTime > 2000L) {
+                            Log.i(TAG, "TRACKING LOST -> Resetting")
+                            transitionTo(AppState.IDLE)
+                        } else {
+                            Log.d(TAG, "TRACKING LOST but holding DECODED (cooldown: ${now - stateStartTime}ms)")
+                        }
                     }
                 }
             }
-            AppState.DECODED -> {
-                feedbackMessage = "DONE"
-                if (!presence) transitionTo(AppState.IDLE)
+            AppState.RESETTING -> {
+                transitionTo(AppState.IDLE)
             }
         }
     }
@@ -189,61 +156,54 @@ class BoxProcessor {
         }
     }
 
-    private fun nv21ToBitmap(data: ByteArray, width: Int, height: Int): Bitmap {
-        val yuvImage = android.graphics.YuvImage(data, android.graphics.ImageFormat.NV21, width, height, null)
-        val out = java.io.ByteArrayOutputStream()
-        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 90, out)
-        val imageBytes = out.toByteArray()
-        return android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+    // ================= BITMAP POOL =================
+    private var reusableBitmap: Bitmap? = null
+    private var pixelsArray: IntArray? = null
+
+    private fun getBitmap(width: Int, height: Int): Bitmap {
+        var bitmap = reusableBitmap
+        if (bitmap == null || bitmap.width != width || bitmap.height != height) {
+            bitmap?.recycle()
+            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            reusableBitmap = bitmap
+            pixelsArray = IntArray(width * height)
+        }
+        return bitmap
     }
 
-                if (result != null) {
-                    tracker.updateDetection(result.box, now)
+    private fun nv21ToBitmap(data: ByteArray, width: Int, height: Int): Bitmap {
+        val bitmap = getBitmap(width, height)
+        val pixels = pixelsArray ?: return bitmap
+        val frameSize = width * height
 
-                    if (tracker.isLikelyNewBox(result.box)) {
-                        Log.i(TAG, "NEW BOX DETECTED (during verify) -> Resetting")
-                        transitionTo(AppState.IDLE)
-                        return
-                    }
-                } else {
-                    val shouldReset = tracker.updateMiss(now)
-                    if (shouldReset) {
-                        Log.i(TAG, "TRACKING LOST (during verify) -> Resetting")
-                        transitionTo(AppState.IDLE)
-                    }
-                }
-            }
-            AppState.DECODED -> {
-                feedbackMessage = "TRACKING: $motionLevel"
-
-                val result = try {
-                    barcodeDecoder.scan(bitmap)
-                } catch (e: Exception) {
-                    null
+        var yp = 0
+        for (j in 0 until height) {
+            var uvp = frameSize + (j shr 1) * width
+            var u = 0
+            var v = 0
+            for (i in 0 until width) {
+                var y = (0xff and data[yp].toInt()) - 16
+                if (y < 0) y = 0
+                if ((i and 1) == 0) {
+                    v = (0xff and data[uvp++].toInt()) - 128
+                    u = (0xff and data[uvp++].toInt()) - 128
                 }
 
-                if (result != null) {
-                    tracker.updateDetection(result.box, now)
+                val y1192 = 1192 * y
+                var r = (y1192 + 1634 * v)
+                var g = (y1192 - 833 * v - 400 * u)
+                var b = (y1192 + 2066 * u)
 
-                    if (tracker.isLikelyNewBox(result.box)) {
-                        Log.i(TAG, "NEW BOX DETECTED -> Resetting")
-                        transitionTo(AppState.IDLE)
-                        return
-                    }
+                if (r < 0) r = 0 else if (r > 262143) r = 262143
+                if (g < 0) g = 0 else if (g > 262143) g = 262143
+                if (b < 0) b = 0 else if (b > 262143) b = 262143
 
-                    motionLevel = tracker.getMotionLevel()
-                } else {
-                    val shouldReset = tracker.updateMiss(now)
-                    if (shouldReset) {
-                        Log.i(TAG, "TRACKING LOST -> Resetting")
-                        transitionTo(AppState.IDLE)
-                    }
-                }
-            }
-            AppState.RESETTING -> {
-                transitionTo(AppState.IDLE)
+                pixels[yp] = -0x1000000 or ((r shl 6) and 0xff0000) or ((g shr 2) and 0xff00) or ((b shr 10) and 0xff)
+                yp++
             }
         }
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+        return bitmap
     }
 
     private fun transitionTo(newState: AppState) {

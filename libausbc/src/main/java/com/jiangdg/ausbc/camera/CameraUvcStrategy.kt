@@ -622,7 +622,7 @@ class CameraUvcStrategy(ctx: Context) : ICameraStrategy(ctx) {
      *
      * @param enable true enable auto focus
      */
-    override fun setAutoFocus(enable: Boolean) {
+    fun setAutoFocus(enable: Boolean) {
         mUVCCamera?.autoFocus = enable
     }
 
@@ -631,7 +631,7 @@ class CameraUvcStrategy(ctx: Context) : ICameraStrategy(ctx) {
      *
      * @param focus absolute focus value
      */
-    override fun setFocus(focus: Int) {
+     fun setFocus(focus: Int) {
         mUVCCamera?.setFocusAbs(focus)
     }
 

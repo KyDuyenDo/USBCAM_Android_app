@@ -191,6 +191,7 @@ object Config {
     const val NEW_BOX_Y_THRESHOLD: Float = 60f
 
     const val MOTION_LOW_THRESHOLD: Float    = 5f
+
     const val MOTION_MEDIUM_THRESHOLD: Float = 20f
 
     // =========================================================
@@ -198,4 +199,17 @@ object Config {
     // =========================================================
 
     const val RFID_SCAN_WINDOW_MS = 500L
+
+    // =========================================================
+    // CAMERA FRAME WATCHDOG
+    // =========================================================
+
+    /** Thời gian tối đa không nhận được frame trước khi tự reconnect (ms) */
+    const val CAMERA_FRAME_TIMEOUT_MS = 2000L
+
+    /** Khoảng thời gian watchdog kiểm tra định kỳ (ms) */
+    const val CAMERA_WATCHDOG_INTERVAL_MS = 2000L
+
+    /** Độ trễ trước khi mở lại camera sau khi đóng (ms) */
+    const val CAMERA_RECONNECT_DELAY_MS = 1500L
 }
