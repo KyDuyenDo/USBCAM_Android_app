@@ -31,6 +31,8 @@ class BoxProcessor {
 
     private var frameProcessCount = 0L
 
+    private val poFailCounts = mutableMapOf<String, Int>()
+
     // ML Kit barcode decoder (đã có sẵn, dùng cho cả presence + decode)
     private val barcodeDecoder = BarcodeDecoder()
 
@@ -147,7 +149,7 @@ class BoxProcessor {
         barcodeBox = result.box
         tracker.updateDetection(result.box, now)
 
-        val poResult = poExtractor.extract(bitmap, result.value)
+        val poResult = poExtractor.extract(bitmap, result.value, result.box, poFailCounts)
         if (poResult != null) {
             po = poResult.po
             poBox = poResult.box
@@ -218,6 +220,7 @@ class BoxProcessor {
             poBox = null
             poExtractor.reset()
             tracker.reset()
+            poFailCounts.clear()
         }
     }
 
@@ -228,6 +231,12 @@ class BoxProcessor {
             Log.i(TAG, "API VERIFIED -> DECODED")
             transitionTo(AppState.DECODED)
         } else {
+            val failedPo = po
+            if (failedPo != null) {
+                val fails = poFailCounts.getOrDefault(failedPo, 0) + 1
+                poFailCounts[failedPo] = fails
+                Log.i(TAG, "API REJECTED -> PO $failedPo fails: $fails")
+            }
             Log.i(TAG, "API REJECTED -> Retrying PO")
             po = null
             poExtractor.reset()

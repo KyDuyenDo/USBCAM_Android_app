@@ -358,9 +358,9 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 startCameraWatchdog()
                 com.example.usbcam.utils.DeviceStatusTracker.isCameraConnected = true
                 com.example.usbcam.utils.DeviceStatusTracker.reportStatus(requireContext())
-                self.setAutoFocus(false)
-                self.setFocus(450)
-                Log.i(TAG, "Camera focus fixed to 450")
+//                self.setAutoFocus(false)
+//                self.setFocus(450)
+//                Log.i(TAG, "Camera focus fixed to 450")
             }
             ICameraStateCallBack.State.CLOSED -> {
                 Log.i(TAG, "Camera closed (reconnecting=$isCameraReconnecting)")
@@ -763,7 +763,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             if (rfidViewModel.lastEpc.value.isNullOrEmpty()) {
                 rfidViewModel.clearRfidData()
             }
-            com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext()).startScanning()
+            val rfidManager = com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext())
+            if (!rfidManager.isScanning) {
+                rfidManager.startScanning()
+            }
             rfidViewModel.setScanning(true)
 
             if (state == AppState.VERIFYING) {
@@ -861,10 +864,6 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 Log.d(TAG, "IDLE → Reset RFID state")
                 rfidScanningStarted = false
                 verificationTimeoutHandler.removeCallbacksAndMessages(null)
-                if (rfidConnected) {
-                    com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext()).forceStopScanning()
-                }
-                rfidViewModel.setScanning(false)
                 rfidViewModel.clearRfidData()
             }
 
@@ -880,7 +879,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                     rfidScanningStarted = true
                     // [BUG-4a FIX] clearRfidData() ở đây là đúng — mới bắt đầu scan mới
                     rfidViewModel.clearRfidData()
-                    com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext()).startScanning()
+                    val rfidManager = com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext())
+                    if (!rfidManager.isScanning) {
+                        rfidManager.startScanning()
+                    }
                     rfidViewModel.setScanning(true)
                 }
             }
@@ -954,7 +956,10 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
                 Log.i(TAG, "API ready → Starting RFID scan")
                 rfidScanningStarted = true
                 rfidViewModel.clearRfidData()
-                com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext()).startScanning()
+                val rfidManager = com.example.usbcam.rfid.RfidConnectionManager.getInstance(requireContext())
+                if (!rfidManager.isScanning) {
+                    rfidManager.startScanning()
+                }
                 rfidViewModel.setScanning(true)
             }
             verificationTimeoutHandler.removeCallbacksAndMessages(null)

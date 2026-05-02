@@ -24,12 +24,13 @@ class POExtractor {
     )
 
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    private val ocrFusion = OCRFusion(
-        maxFrames = Config.PO_FUSION_MAX_FRAMES,
-        minAgree = Config.PO_FUSION_MIN_AGREE
-    )
 
-    fun extract(bitmap: Bitmap, barcode: String): POExtractionResult? {
+    fun extract(
+        bitmap: Bitmap,
+        barcode: String,
+        barcodeBox: RectF?,
+        poFailCounts: Map<String, Int> = emptyMap()
+    ): POExtractionResult? {
         val startTime = System.currentTimeMillis()
 
         val w = bitmap.width
@@ -128,9 +129,51 @@ class POExtractor {
             val smartCandidates = generateSmartVariationsWithBox(candidatesWithBox)
             Log.i(TAG, "Total candidates (with variations): ${smartCandidates.size}")
 
-            // Process each candidate
+            val scaleX = roiW.toFloat() / targetWidth
+            val scaleY = roiH.toFloat() / targetHeight
+
+            // Sort candidates to prioritize those below the barcodeBox
+            val sortedCandidates = smartCandidates.sortedBy { candidatePair ->
+                val box = candidatePair.second
+                if (box == null || barcodeBox == null) {
+                    return@sortedBy 1000000f // Lowest priority if no box
+                }
+
+                // Map candidate box from processedBitmap coordinates back to original bitmap coordinates
+                val originalBox = RectF(
+                    box.left * scaleX + roiX,
+                    box.top * scaleY + roiY,
+                    box.right * scaleX + roiX,
+                    box.bottom * scaleY + roiY
+                )
+
+                // "Below" means the candidate's top is mostly below the barcode's center
+                val isBelow = originalBox.top > barcodeBox.centerY()
+
+                if (isBelow) {
+                    // Distance from bottom of barcode to top of text + horizontal distance
+                    val dy = originalBox.top - barcodeBox.bottom
+                    val verticalScore = if (dy >= 0) dy else -dy * 2f // Penalty for overlapping
+                    val dx = originalBox.centerX() - barcodeBox.centerX()
+                    val horizontalScore = Math.abs(dx)
+
+                    verticalScore + horizontalScore * 0.5f
+                } else {
+                    // Not below, assign a high base score so it's prioritized after the ones below
+                    val dy = barcodeBox.top - originalBox.bottom
+                    val verticalScore = if (dy >= 0) dy else -dy * 2f
+                    val dx = originalBox.centerX() - barcodeBox.centerX()
+                    val horizontalScore = Math.abs(dx)
+
+                    10000f + verticalScore + horizontalScore * 0.5f
+                }
+            }
+
+            // Process each candidate and collect valid ones
             var foundCount = 0
-            for ((candidate, box) in smartCandidates) {
+            val validCandidates = mutableListOf<POExtractionResult>()
+
+            for ((candidate, box) in sortedCandidates) {
                 if (candidate.isEmpty()) continue
 
                 // Normalize: Fix OCR errors, remove "PO#" and clean
@@ -144,22 +187,29 @@ class POExtractor {
                 if (normalized.length in Config.MIN_PO_LENGTH..Config.MAX_PO_LENGTH &&
                     normalized.all { it.isDigit() }
                 ) {
+                    val failCount = poFailCounts.getOrDefault(normalized, 0)
+                    if (failCount >= 3) {
+                        Log.w(TAG, "Skipping PO candidate '$normalized' (failed API $failCount times)")
+                        continue
+                    }
+
                     foundCount++
                     Log.i(TAG, "✓ VALID PO CANDIDATE #$foundCount: '$normalized' (from: '$candidate')")
-
-                    ocrFusion.add(normalized)
-                    val fused = ocrFusion.getFused()
-                    if (fused != null) {
-                        val elapsedMs = System.currentTimeMillis() - startTime
-                        Log.i(TAG, "🎯 PO FOUND (Fused): $fused [${elapsedMs}ms]")
-                        // Return PO with its bounding box
-                        return POExtractionResult(po = fused, box = box)
-                    }
+                    validCandidates.add(POExtractionResult(po = normalized, box = box))
                 } else {
                     if (normalized.length > 3) { // Only log non-trivial rejects
                         Log.d(TAG, "✗ Rejected: '$normalized' (length=${normalized.length}, digits=${normalized.all { it.isDigit() }})")
                     }
                 }
+            }
+
+            if (validCandidates.isNotEmpty()) {
+                // Ưu tiên chọn kết quả có trên 8 ký tự (hoặc >= 8 tùy ngữ cảnh, ở đây > 8)
+                val bestCandidate = validCandidates.firstOrNull { it.po.length > 8 } ?: validCandidates.first()
+
+                val elapsedMs = System.currentTimeMillis() - startTime
+                Log.i(TAG, "🎯 PO FOUND (Direct): ${bestCandidate.po} [${elapsedMs}ms]")
+                return bestCandidate
             }
 
             val elapsedMs = System.currentTimeMillis() - startTime
@@ -392,7 +442,6 @@ class POExtractor {
 
     fun reset() {
         Log.d(TAG, "POExtractor reset")
-        ocrFusion.reset()
     }
 
     fun release() {

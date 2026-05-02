@@ -33,7 +33,7 @@ object Config {
 
     const val SCAN_TIMEOUT_MS = 2000L
 
-    const val MIN_PO_LENGTH = 5
+    const val MIN_PO_LENGTH = 8
     const val MAX_PO_LENGTH = 12
     const val BEEP_VOLUME = 0
     const val MAX_PROCESSING_FPS = 15

@@ -21,11 +21,11 @@ class RfidConnectionManager private constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "RfidConnectionManager"
-
         // ============================================
         // CẤU HÌNH VID/PID MẶC ĐỊNH CỦA RFID READER
         // ============================================
         // TODO: Thay đổi theo thiết bị RFID thực tế của bạn
+
         private const val DEFAULT_VENDOR_ID = 0x483 // VendorId = 1155
         private const val DEFAULT_PRODUCT_ID = 0x5750 // ProductId = 22345
 
