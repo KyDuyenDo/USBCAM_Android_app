@@ -272,6 +272,14 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             }
         }
         rfidViewModel.initBoxProcessor(boxProcessor)
+
+        // ── Report Button ──────────────────────────────────────────────────────
+        mViewBinding?.btnOpenReport?.setOnClickListener {
+            val currentLine = viewModel.selectedLine.value
+                ?: com.example.usbcam.utils.LinePreferences.getSelectedLine(requireContext())
+            ReportDialogFragment.newInstance(currentLine)
+                .show(parentFragmentManager, "ReportDialog")
+        }
     }
 
     override fun onDestroy() {

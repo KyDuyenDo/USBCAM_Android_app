@@ -1,0 +1,632 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_main">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/primary_blue"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="📊 BÁO CÁO SẢN XUẤT"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/btn_close_report"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            app:tint="@color/white" />
+    </LinearLayout>
+
+    <!-- 3 main tab buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:background="@color/bg_surface"
+        android:orientation="horizontal"
+        android:elevation="2dp">
+
+        <Button
+            android:id="@+id/btn_tab_daily"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="📅 Theo Ngày"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/primary_blue"
+            android:textColor="@color/white"
+            style="?attr/materialButtonStyle" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="@color/border_color" />
+
+        <Button
+            android:id="@+id/btn_tab_qty"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="📦 Số Lượng"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/bg_surface"
+            android:textColor="@color/text_secondary"
+            style="?attr/materialButtonStyle" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="@color/border_color" />
+
+        <Button
+            android:id="@+id/btn_tab_hourly"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="⏱️ Hàng Giờ"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/bg_surface"
+            android:textColor="@color/text_secondary"
+            style="?attr/materialButtonStyle" />
+    </LinearLayout>
+
+    <!-- Content panels -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Panel: Theo Ngày -->
+        <LinearLayout
+            android:id="@+id/panel_daily"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <!-- Date picker row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/bg_surface"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ngày:"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_selected_date"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_card"
+                    android:gravity="center"
+                    android:textColor="@color/primary_blue"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:text="2026-05-04" />
+
+                <Button
+                    android:id="@+id/btn_pick_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:text="📅 Chọn ngày"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:backgroundTint="@color/primary_blue"
+                    android:textColor="@color/white"
+                    style="?attr/materialButtonStyle" />
+
+                <Button
+                    android:id="@+id/btn_refresh_daily"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="6dp"
+                    android:text="🔄"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:backgroundTint="@color/success_green"
+                    android:textColor="@color/white"
+                    style="?attr/materialButtonStyle" />
+            </LinearLayout>
+
+            <!-- Sub-tabs: Data Scan / Data ERP -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@color/bg_surface"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="4dp">
+
+                <Button
+                    android:id="@+id/btn_subtab_scan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="Data Scan"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:backgroundTint="@color/primary_blue"
+                    android:textColor="@color/white"
+                    android:paddingHorizontal="16dp"
+                    style="?attr/materialButtonStyle" />
+
+                <Button
+                    android:id="@+id/btn_subtab_erp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:text="Data ERP"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:backgroundTint="@color/bg_main"
+                    android:textColor="@color/text_secondary"
+                    android:paddingHorizontal="16dp"
+                    style="?attr/materialButtonStyle" />
+            </LinearLayout>
+
+            <!-- Loading -->
+            <ProgressBar
+                android:id="@+id/pb_daily"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+            <!-- Sub-panel: Data Scan -->
+            <LinearLayout
+                android:id="@+id/panel_scan"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <!-- Scan summary header (Mockup style) -->
+                <LinearLayout
+                    android:id="@+id/layout_scan_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@color/bg_surface"
+                    android:layout_margin="8dp"
+                    android:elevation="2dp"
+                    android:visibility="visible">
+
+                    <!-- Header row (Blue) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="32dp"
+                        android:background="@color/primary_blue"
+                        android:orientation="horizontal">
+                        <TextView style="@style/ReportColHeader" android:text="DEP"          android:layout_weight="1"/>
+                        <TextView style="@style/ReportColHeader" android:text="SCDATE"       android:layout_weight="1.2"/>
+                        <TextView style="@style/ReportColHeader" android:text="QTY SCANNED"  android:layout_weight="1"/>
+                        <TextView style="@style/ReportColHeader" android:text="QTY ERP"      android:layout_weight="1"/>
+                        <TextView style="@style/ReportColHeader" android:text="ADJUST QTY"   android:layout_weight="1"/>
+                    </LinearLayout>
+
+                    <!-- Data row (White) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+                        <TextView android:id="@+id/tv_scan_dep"    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"   android:gravity="center" android:textSize="14sp" android:textStyle="bold" android:text="G4_G05"/>
+                        <TextView android:id="@+id/tv_scan_date"   android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:gravity="center" android:textSize="14sp" android:text="04/05/2026"/>
+                        <TextView android:id="@+id/tv_scan_qty"    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"   android:gravity="center" android:textSize="14sp" android:textStyle="bold" android:text="734" android:textColor="@color/text_primary"/>
+                        <TextView android:id="@+id/tv_scan_erp"    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"   android:gravity="center" android:textSize="14sp" android:textStyle="bold" android:text="756" android:textColor="@color/text_primary"/>
+                        <TextView android:id="@+id/tv_scan_adjust" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"   android:gravity="center" android:textSize="14sp" android:textStyle="bold" android:text="734" android:textColor="@color/text_primary"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Scan table: two-pane (table + size detail) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+
+                    <!-- LEFT: main scan table -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="3.2"
+                        android:orientation="vertical">
+
+                        <!-- Table header (Grey) -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="36dp"
+                            android:background="#D0D0D0"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="RY"         android:layout_weight="2"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="ART"        android:layout_weight="1.2"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="MODEL"      android:layout_weight="2"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="ORDER"      android:layout_weight="1.2"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="SCANNED"    android:layout_weight="1.2"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="ERP"        android:layout_weight="1"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="ADJUST"     android:layout_weight="1"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="REMAINING"  android:layout_weight="1.5"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="DATE/ID"    android:layout_weight="1.5"/>
+                        </LinearLayout>
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_scan_table"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:clipToPadding="false" />
+                    </LinearLayout>
+
+                    <!-- RIGHT: size detail panel -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:background="@color/bg_surface"
+                        android:layout_marginStart="2dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="36dp"
+                            android:background="#D0D0D0"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="Size"  android:layout_weight="1"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="Qty"   android:layout_weight="1"/>
+                        </LinearLayout>
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_size_detail"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:clipToPadding="false" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Sub-panel: Data ERP -->
+            <LinearLayout
+                android:id="@+id/panel_erp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- ERP header summary (Mockup style) -->
+                <LinearLayout
+                    android:id="@+id/layout_erp_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@color/bg_surface"
+                    android:layout_margin="8dp"
+                    android:elevation="2dp"
+                    android:visibility="visible">
+
+                    <!-- Header row (Blue) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="32dp"
+                        android:background="@color/primary_blue"
+                        android:orientation="horizontal">
+                        <TextView style="@style/ReportColHeader" android:text="SCDate" android:layout_weight="1.2"/>
+                        <TextView style="@style/ReportColHeader" android:text="Fty" android:layout_weight="0.8"/>
+                        <TextView style="@style/ReportColHeader" android:text="DepName" android:layout_weight="1"/>
+                        <TextView style="@style/ReportColHeader" android:text="Hours" android:layout_weight="0.8"/>
+                        <TextView style="@style/ReportColHeader" android:text="Pairs" android:layout_weight="1"/>
+                        <TextView style="@style/ReportColHeader" android:text="USERID" android:layout_weight="1"/>
+                        <TextView style="@style/ReportColHeader" android:text="USERDATE" android:layout_weight="1.5"/>
+                    </LinearLayout>
+
+                    <!-- Data row (White) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+                        <TextView android:id="@+id/tv_sum_scdate" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.2" android:gravity="center" android:textSize="13sp" android:text="04/05/2026"/>
+                        <TextView android:id="@+id/tv_sum_fty"    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="0.8" android:gravity="center" android:textSize="13sp" android:text="LHG"/>
+                        <TextView android:id="@+id/tv_sum_dep"    android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"   android:gravity="center" android:textSize="13sp" android:text="G4_G05"/>
+                        <TextView android:id="@+id/tv_sum_hours"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="0.8" android:gravity="center" android:textSize="13sp" android:text="8.0"/>
+                        <TextView android:id="@+id/tv_sum_pairs"  android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"   android:gravity="center" android:textSize="13sp" android:text="1402" android:textStyle="bold"/>
+                        <TextView android:id="@+id/tv_sum_userid" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"   android:gravity="center" android:textSize="13sp" android:text="09855"/>
+                        <TextView android:id="@+id/tv_sum_userdate" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1.5" android:gravity="center" android:textSize="12sp" android:text="04/05/2026 07:15"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ERP Content Panel (Two-pane) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="4dp">
+
+                    <!-- LEFT: main ERP table -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="3"
+                        android:orientation="vertical">
+
+                        <!-- Table header (Grey) -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="36dp"
+                            android:background="#D0D0D0"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="RY"         android:layout_weight="2"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="Process"    android:layout_weight="1"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="TodayPairs" android:layout_weight="1.5"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="Article"    android:layout_weight="2"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="Shoe Name"  android:layout_weight="3"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="USERDATE"   android:layout_weight="2"/>
+                        </LinearLayout>
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_erp_table"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:clipToPadding="false" />
+                    </LinearLayout>
+
+                    <!-- RIGHT: size detail panel for ERP -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:background="@color/bg_surface"
+                        android:layout_marginStart="2dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="36dp"
+                            android:background="#D0D0D0"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="SIZE" android:layout_weight="1"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="Qty"  android:layout_weight="1"/>
+                            <TextView style="@style/ReportColHeader" android:textColor="#333333" android:text="OK"   android:layout_weight="1"/>
+                        </LinearLayout>
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/rv_erp_size_detail"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:clipToPadding="false" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Panel: Theo Số Lượng (RY Query) -->
+        <LinearLayout
+            android:id="@+id/panel_qty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- Search Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp"
+                android:gravity="center_vertical"
+                android:background="@color/bg_surface">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="RY: "
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"
+                    android:textSize="15sp" />
+
+                <EditText
+                    android:id="@+id/et_ry_query"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_card"
+                    android:hint="Nhập mã RY..."
+                    android:paddingHorizontal="12dp"
+                    android:textSize="14sp"
+                    android:layout_marginHorizontal="8dp"
+                    android:inputType="textCapCharacters" />
+
+                <Button
+                    android:id="@+id/btn_query_ry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="🔍 Query"
+                    android:textAllCaps="false"
+                    android:backgroundTint="@color/primary_blue"
+                    android:textColor="@color/white"
+                    style="?attr/materialButtonStyle" />
+            </LinearLayout>
+
+            <!-- Summary Table -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_margin="8dp"
+                android:elevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="32dp"
+                    android:background="@color/primary_blue"
+                    android:orientation="horizontal">
+                    <TextView style="@style/ReportColHeader" android:text="RY"     android:layout_weight="1.5"/>
+                    <TextView style="@style/ReportColHeader" android:text="PO"     android:layout_weight="1.5"/>
+                    <TextView style="@style/ReportColHeader" android:text="QTYED"  android:layout_weight="1"/>
+                    <TextView style="@style/ReportColHeader" android:text="ORDER"  android:layout_weight="1"/>
+                    <TextView style="@style/ReportColHeader" android:text="REMAIN" android:layout_weight="1"/>
+                    <TextView style="@style/ReportColHeader" android:text="ART"    android:layout_weight="1"/>
+                    <TextView style="@style/ReportColHeader" android:text="MODEL"  android:layout_weight="2"/>
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_qty_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/white" />
+            </LinearLayout>
+
+            <!-- Detail Table -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="32dp"
+                    android:background="@color/primary_blue"
+                    android:orientation="horizontal">
+                    <TextView style="@style/ReportColHeader" android:text="SIZE"      android:layout_weight="1"/>
+                    <TextView style="@style/ReportColHeader" android:text="QTYED"     android:layout_weight="1"/>
+                    <TextView style="@style/ReportColHeader" android:text="ORDERQTY"  android:layout_weight="1"/>
+                    <TextView style="@style/ReportColHeader" android:text="QTYREMAIN" android:layout_weight="1"/>
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_qty_detail"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/white" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Panel: Hàng Giờ -->
+        <LinearLayout
+            android:id="@+id/panel_hourly"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/bg_surface"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ngày:"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="8dp"/>
+
+                <TextView
+                    android:id="@+id/tv_hourly_date"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_card"
+                    android:gravity="center"
+                    android:textColor="@color/primary_blue"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:text="2026-05-04" />
+
+                <Button
+                    android:id="@+id/btn_pick_hourly_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:text="📅 Chọn ngày"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:backgroundTint="@color/primary_blue"
+                    android:textColor="@color/white"
+                    style="?attr/materialButtonStyle" />
+
+                <Button
+                    android:id="@+id/btn_refresh_hourly"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="6dp"
+                    android:text="🔄"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:backgroundTint="@color/success_green"
+                    android:textColor="@color/white"
+                    style="?attr/materialButtonStyle" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/pb_hourly"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+            <!-- Hourly table header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:background="@color/primary_blue"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView style="@style/ReportColHeader" android:text="GIỜ"      android:layout_weight="2"/>
+                <TextView style="@style/ReportColHeader" android:text="MỤC TIÊU" android:layout_weight="2"/>
+                <TextView style="@style/ReportColHeader" android:text="SẢN LƯỢNG" android:layout_weight="2"/>
+                <TextView style="@style/ReportColHeader" android:text="CHÊNH LỆCH" android:layout_weight="2"/>
+                <TextView style="@style/ReportColHeader" android:text="TRẠNG THÁI" android:layout_weight="2"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_hourly_table"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false" />
+        </LinearLayout>
+
+    </FrameLayout>
+</LinearLayout>

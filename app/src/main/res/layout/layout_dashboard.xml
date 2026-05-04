@@ -203,6 +203,18 @@
                         android:textSize="18dp"
                         android:textStyle="bold" />
 
+                    <!-- Report Button -->
+                    <Button
+                        android:id="@+id/btn_open_report"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:layout_marginEnd="8dp"
+                        android:text="📊 Báo Cáo"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        android:textColor="@color/white"
+                        android:backgroundTint="@color/orange_warning"
+                        style="?attr/materialButtonStyle" />
 
                 </LinearLayout>
 
