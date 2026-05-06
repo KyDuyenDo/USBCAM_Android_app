@@ -250,7 +250,11 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         viewModel.loadTarget()
         viewModel.loadAllTimeSlots()
         viewModel.initSelectedLine(requireContext())
-        setupLineSpinner()
+        setupLineSelector()
+
+        viewModel.selectedLine.observe(viewLifecycleOwner) { line ->
+            mViewBinding?.tvLineSelector?.text = line ?: com.example.usbcam.utils.LinePreferences.DEFAULT_LINE_LABEL
+        }
 
         com.example.usbcam.utils.NetworkConnectionMonitor(requireContext())
             .observe(viewLifecycleOwner) { isConnected ->
@@ -277,13 +281,25 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         mViewBinding?.btnOpenReport?.setOnClickListener {
             val currentLine = viewModel.selectedLine.value
                 ?: com.example.usbcam.utils.LinePreferences.getSelectedLine(requireContext())
-            ReportDialogFragment.newInstance(currentLine)
+            ReportDialogFragment.newInstance(currentLine ?: "")
                 .show(parentFragmentManager, "ReportDialog")
         }
 
         // ── Input Production Button ────────────────────────────────────────────
         mViewBinding?.btnInputProduction?.setOnClickListener {
             SearchRyDialogFragment().show(parentFragmentManager, "SearchRyDialog")
+        }
+
+        // Check if production line is configured, if not, force selection
+        view.post {
+            if (isAdded && !com.example.usbcam.utils.LinePreferences.isConfigured(requireContext())) {
+                val dialog = LineSelectionDialogFragment()
+                dialog.isCancelable = false
+                dialog.onLineSelected = { line ->
+                    viewModel.setSelectedLine(line)
+                }
+                dialog.show(parentFragmentManager, "LineSelectionDialog")
+            }
         }
     }
 
@@ -319,27 +335,16 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
         isCameraReconnecting = false
     }
 
-    // ─── Line Spinner ─────────────────────────────────────────────────────────────
+    // ─── Line Selector ─────────────────────────────────────────────────────────────
 
-    private fun setupLineSpinner() {
-        val spinner = mViewBinding?.spinnerLine ?: return
-        val lines   = com.example.usbcam.utils.LinePreferences.availableLines
-
-        val spinnerAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, lines)
-            .also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-        spinner.adapter = spinnerAdapter
-        spinner.setSelection(com.example.usbcam.utils.LinePreferences.getSelectedLineIndex(requireContext()), false)
-
-        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val selectedLine = lines[position]
-                if (selectedLine != viewModel.selectedLine.value) {
-                    Log.d(TAG, "Line changed -> $selectedLine")
-                    com.example.usbcam.utils.LinePreferences.saveSelectedLine(requireContext(), selectedLine)
-                    viewModel.setSelectedLine(selectedLine)
-                }
+    private fun setupLineSelector() {
+        mViewBinding?.tvLineSelector?.setOnClickListener {
+            val dialog = LineSelectionDialogFragment()
+            dialog.onLineSelected = { selectedLine ->
+                Log.d(TAG, "Line changed via dialog -> $selectedLine")
+                viewModel.setSelectedLine(selectedLine)
             }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            dialog.show(parentFragmentManager, "LineSelectionDialog")
         }
     }
 

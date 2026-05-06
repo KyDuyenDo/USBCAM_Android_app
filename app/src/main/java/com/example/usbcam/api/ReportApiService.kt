@@ -80,6 +80,23 @@ interface ReportApiService {
         @Body body: ScbbContextSaverRequest
     ): Response<SaveStitchingResponse>
 
+    @GET("api/get-dep-types")
+    suspend fun getDepTypes(): Response<List<DepTypeItem>>
+
+    @GET("api/get-dep-locations")
+    suspend fun getDepLocations(
+        @Query("depType") depType: Int
+    ): Response<List<DepLocationItem>>
+
+    @GET("api/get-departments")
+    suspend fun getDepartments(
+        @Query("depType") depType: Int,
+        @Query("loc") loc: String
+    ): Response<List<DepartmentItem>>
+
+    @GET("api/get-factory")
+    suspend fun getFactory(): Response<List<FactoryItem>>
+
     companion object {
         private const val BASE_URL = "http://192.168.30.169:3001/"
 

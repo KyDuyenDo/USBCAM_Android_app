@@ -31,6 +31,7 @@ class SearchRyDialogFragment : DialogFragment() {
     private lateinit var btnClearSearch: ImageView
     private lateinit var btnCloseDialog: ImageView
     private lateinit var btnQueue: Button
+    private lateinit var btnServerCode: Button
     private lateinit var tvResultCount: TextView
     private lateinit var adapter: SearchRyAdapter
     
@@ -47,9 +48,11 @@ class SearchRyDialogFragment : DialogFragment() {
         btnClearSearch = view.findViewById(R.id.btn_clear_search)
         btnCloseDialog = view.findViewById(R.id.btn_close_dialog)
         btnQueue = view.findViewById(R.id.btn_queue)
+        btnServerCode = view.findViewById(R.id.btn_server_code)
         tvResultCount = view.findViewById(R.id.tv_search_result_count)
 
         setupRecyclerView()
+        updateLineDisplay()
         setupListeners()
         
         // Initial search to display "a" as requested in screenshot
@@ -98,6 +101,19 @@ class SearchRyDialogFragment : DialogFragment() {
                 .show(parentFragmentManager, "QueueInfoDialog")
         }
 
+        btnServerCode.setOnClickListener {
+            val dialog = LineSelectionDialogFragment()
+            dialog.onLineSelected = { selectedLine ->
+                updateLineDisplay()
+                // Re-trigger search with new factory if query exists
+                val query = etSearchRy.text.toString().trim()
+                if (query.isNotEmpty()) {
+                    performSearch(query)
+                }
+            }
+            dialog.show(parentFragmentManager, "LineSelectionDialog")
+        }
+
         etSearchRy.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -113,12 +129,17 @@ class SearchRyDialogFragment : DialogFragment() {
         })
     }
 
+    private fun updateLineDisplay() {
+        val currentLine = com.example.usbcam.utils.LinePreferences.getSelectedLine(requireContext())
+        btnServerCode.text = currentLine
+    }
+
     private fun performSearch(query: String) {
         lifecycleScope.launch {
             try {
-                // "serverCode" is hardcoded to "LHG" based on user requirements: /api/search-ry?zlbh=a&serverCode=LHG
+                val factory = com.example.usbcam.utils.LinePreferences.getSelectedFactory(requireContext()) ?: "LHG"
                 val response = withContext(Dispatchers.IO) {
-                    apiService.searchRy(query, "LHG")
+                    apiService.searchRy(query, factory)
                 }
                 if (response.isSuccessful) {
                     val data = response.body() ?: emptyList()

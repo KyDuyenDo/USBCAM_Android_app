@@ -44,7 +44,7 @@ object DeviceStatusTracker {
                 val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                 
                 val statusRequest = DeviceStatusRequest(
-                    lineId = lineId,
+                    lineId = lineId ?: "",
                     cameraConnected = cam,
                     rfidConnected = rfid,
                     timestamp = now

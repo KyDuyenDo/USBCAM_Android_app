@@ -28,7 +28,7 @@
                 android:layout_height="match_parent"
                 android:background="@null"
                 android:hint="Tìm kiếm ZLBH..."
-                android:textColor="@color/common_google_signin_btn_text_dark"
+                android:textColor="@color/text_primary"
                 android:textColorHint="#888888"
                 android:paddingStart="40dp"
                 android:paddingEnd="40dp"

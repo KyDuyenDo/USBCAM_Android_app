@@ -31,7 +31,7 @@ class DeviceStatusWorker(context: Context, params: WorkerParameters) : Coroutine
             val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
             
             val statusRequest = DeviceStatusRequest(
-                lineId = lineId,
+                lineId = lineId ?: "",
                 cameraConnected = cameraConnected,
                 rfidConnected = rfidConnected,
                 timestamp = now
@@ -44,7 +44,7 @@ class DeviceStatusWorker(context: Context, params: WorkerParameters) : Coroutine
             
             // Heartbeat Ping
             try {
-                apiService.pingDevice(lineId)
+                apiService.pingDevice(lineId ?: "")
                 Log.d("DeviceStatusWorker", "Heartbeat ping successful for line: $lineId")
             } catch (e: Exception) {
                 Log.e("DeviceStatusWorker", "Heartbeat ping failed", e)

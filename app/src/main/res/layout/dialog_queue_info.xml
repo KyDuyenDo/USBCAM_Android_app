@@ -96,13 +96,49 @@
         android:layout_height="match_parent"
         android:orientation="horizontal">
 
-        <!-- Left Sidebar: List of Queued RYs -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_queued_rys"
+        <!-- Left Sidebar: List of Queued RYs with Search -->
+        <LinearLayout
             android:layout_width="250dp"
             android:layout_height="match_parent"
-            android:background="#1A1C20"
-            android:clipToPadding="false"/>
+            android:orientation="vertical"
+            android:background="#1A1C20">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_margin="8dp">
+
+                <EditText
+                    android:id="@+id/et_search_queued_ry"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_input"
+                    android:hint="Tìm trong hàng chờ..."
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="#888888"
+                    android:textSize="14sp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="36dp"
+                    android:singleLine="true" />
+
+                <ImageView
+                    android:id="@+id/btn_clear_search_queued"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical|end"
+                    android:layout_marginEnd="8dp"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    app:tint="#888888"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_queued_rys"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"/>
+        </LinearLayout>
 
         <View
             android:layout_width="1dp"

@@ -126,3 +126,22 @@ data class SaveStitchingResponse(
     @SerializedName("success") val success: Boolean?,
     @SerializedName("message") val message: String?
 )
+
+data class DepTypeItem(
+    @SerializedName("label") val label: String?,
+    @SerializedName("value") val value: Int?
+)
+
+data class DepLocationItem(
+    @SerializedName("Loc") val loc: String?
+)
+
+data class DepartmentItem(
+    @SerializedName("ID") val id: String?,
+    @SerializedName("DepName") val depName: String?
+)
+
+data class FactoryItem(
+    @SerializedName("label") val label: String?,
+    @SerializedName("value") val value: String?
+)

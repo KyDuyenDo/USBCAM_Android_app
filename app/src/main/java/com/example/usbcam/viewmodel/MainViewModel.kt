@@ -46,10 +46,9 @@ class MainViewModel(
     private val _targetData = MutableLiveData<TargetData>()
     val targetData: LiveData<TargetData> = _targetData
 
-    // Line dây chuyền được user chọn (default: LHGG4G01)
-    private val _selectedLine =
-            MutableLiveData<String>(com.example.usbcam.utils.LinePreferences.DEFAULT_LINE)
-    val selectedLine: LiveData<String> = _selectedLine
+    // Line dây chuyền được user chọn
+    private val _selectedLine = MutableLiveData<String?>()
+    val selectedLine: LiveData<String?> = _selectedLine
 
     // UI State for scan result
     private val _scanResult = MutableLiveData<PoResponse?>()
@@ -84,7 +83,7 @@ class MainViewModel(
     /** Khởi tạo line từ SharedPreferences khi mở app */
     fun initSelectedLine(context: android.content.Context) {
         val saved = com.example.usbcam.utils.LinePreferences.getSelectedLine(context)
-        _selectedLine.value = saved
+        _selectedLine.value = saved ?: com.example.usbcam.utils.LinePreferences.DEFAULT_LINE_LABEL
     }
 
     fun setCameraSignalError(error: String?) {
@@ -239,7 +238,7 @@ class MainViewModel(
         viewModelScope.launch {
             val lineId = com.example.usbcam.utils.LinePreferences.getSelectedLine(context)
             Log.d("MainViewModel", "Executing initial ping for line: $lineId")
-            repository.pingDevice(lineId)
+            repository.pingDevice(lineId ?: "")
         }
     }
 

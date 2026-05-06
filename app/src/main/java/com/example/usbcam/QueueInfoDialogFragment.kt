@@ -37,6 +37,8 @@ class QueueInfoDialogFragment : DialogFragment() {
     private lateinit var btnConfirm: Button
     private lateinit var rvQueueSizes: RecyclerView
     private lateinit var rvQueuedRys: RecyclerView
+    private lateinit var etSearchQueuedRy: android.widget.EditText
+    private lateinit var btnClearSearchQueued: android.view.View
 
     // ── Adapters ───────────────────────────────────────────────────────────
     private lateinit var sizesAdapter: QueueInfoAdapter
@@ -73,6 +75,8 @@ class QueueInfoDialogFragment : DialogFragment() {
         btnConfirm   = view.findViewById(R.id.btn_confirm)
         rvQueueSizes = view.findViewById(R.id.rv_queue_sizes)
         rvQueuedRys  = view.findViewById(R.id.rv_queued_rys)
+        etSearchQueuedRy = view.findViewById(R.id.et_search_queued_ry)
+        btnClearSearchQueued = view.findViewById(R.id.btn_clear_search_queued)
 
         dbHelper = ProductionDbHelper(requireContext())
 
@@ -80,6 +84,7 @@ class QueueInfoDialogFragment : DialogFragment() {
         setupUI()
         setupSidebar()
         setupSizesRecyclerView()
+        setupSearch()
         loadCurrentRy()
 
         // Start hourly auto-save scheduler
@@ -118,14 +123,49 @@ class QueueInfoDialogFragment : DialogFragment() {
     }
 
     private fun setupSidebar() {
-        sidebarAdapter = QueueSidebarAdapter(QueueManager.queuedItems) { index ->
-            currentIndex = index
-            sidebarAdapter.selectedIndex = index
+        sidebarAdapter = QueueSidebarAdapter(QueueManager.queuedItems) { item ->
+            sidebarAdapter.selectedRy = item
             loadCurrentRy()
         }
         rvQueuedRys.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
         rvQueuedRys.adapter = sidebarAdapter
-        sidebarAdapter.selectedIndex = currentIndex
+    }
+
+    private fun setupSearch() {
+        btnClearSearchQueued.setOnClickListener {
+            etSearchQueuedRy.text.clear()
+        }
+
+        etSearchQueuedRy.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString().trim()
+                btnClearSearchQueued.visibility = if (query.isEmpty()) View.GONE else View.VISIBLE
+                
+                sidebarAdapter.filterData(query)
+                if (query.length >= 2) {
+                    performApiSearch(query)
+                }
+            }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+    }
+
+    private fun performApiSearch(query: String) {
+        lifecycleScope.launch {
+            try {
+                val factory = LinePreferences.getSelectedFactory(requireContext()) ?: SERVER_CODE
+                val response = withContext(Dispatchers.IO) {
+                    apiService.searchRy(query, factory)
+                }
+                if (response.isSuccessful) {
+                    val data = response.body() ?: emptyList()
+                    sidebarAdapter.updateApiResults(data, query)
+                }
+            } catch (e: Exception) {
+                Log.e("QueueInfoDialog", "API search failed", e)
+            }
+        }
     }
 
     private fun setupSizesRecyclerView() {
@@ -138,7 +178,7 @@ class QueueInfoDialogFragment : DialogFragment() {
     private fun loadCurrentRy() {
         if (QueueManager.queuedItems.isEmpty()) return
 
-        val currentItem = QueueManager.queuedItems[currentIndex]
+        val currentItem = sidebarAdapter.selectedRy ?: QueueManager.queuedItems[0]
         val zlbh = currentItem.zlbh ?: "---"
 
         tvHeaderZlbh.text = zlbh
@@ -152,8 +192,9 @@ class QueueInfoDialogFragment : DialogFragment() {
     private fun fetchData(ry: String) {
         lifecycleScope.launch {
             try {
+                val gxlb = LinePreferences.getSelectedGxlb(requireContext())
                 val response = withContext(Dispatchers.IO) {
-                    apiService.getInfoForRy(ry, "A")
+                    apiService.getInfoForRy(ry, gxlb)
                 }
                 if (response.isSuccessful) {
                     sizesAdapter.updateData(response.body() ?: emptyList())
@@ -173,20 +214,23 @@ class QueueInfoDialogFragment : DialogFragment() {
      * Called automatically at :29 via [AutoSaveScheduler], or manually via Đồng Bộ.
      */
     private fun saveCurrentToDb(source: String = "CAMERA") {
-        val currentItem = QueueManager.queuedItems.getOrNull(currentIndex) ?: return
+        val currentItem = sidebarAdapter.selectedRy ?: return
         val scbh = currentItem.ry ?: return
-        val gxlb = currentItem.lean
+
 
         // Use the line selected in app Settings
         val depNo    = LinePreferences.getSelectedLine(requireContext())
+        val gxlb     = LinePreferences.getSelectedGxlb(requireContext())
+        val gsbh     = LinePreferences.getSelectedFactory(requireContext())
         val ts       = TimeSlotUtil.getCurrentTs()
         val userDate = dateFormatter.format(Date())
+
 
         for ((size, qty) in sizesAdapter.getInputEntries()) {
             dbHelper.upsertEntry(
                 scbh        = scbh,
-                depNo       = depNo,
-                gsbh        = size,
+                depNo       = depNo ?: "",
+                gsbh        = gsbh ?: "",
                 xxcc        = size,
                 userId      = DEFAULT_USER,
                 inputSource = source,
@@ -246,6 +290,13 @@ class QueueInfoDialogFragment : DialogFragment() {
                 "⚠ Thành công: $successCount / Lỗi: $failCount"
 
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            
+            // Refresh local UI with latest data from server
+            val selectedItem = sidebarAdapter.selectedRy
+            val ry = selectedItem?.ry
+            if (ry != null) {
+                fetchData(ry)
+            }
         }
     }
 }
