@@ -9,15 +9,22 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.usbcam.api.QueueInfoItem
 
 class QueueInfoAdapter(
-    private var items: List<QueueInfoItem>
+    private var items: List<QueueInfoItem>,
+    private val onQtyChanged: (String, Int) -> Unit
 ) : RecyclerView.Adapter<QueueInfoAdapter.QueueInfoViewHolder>() {
 
     // Map of size -> current qty entered by user (in this session)
     private val inputQtyMap = mutableMapOf<String, Int>()
 
-    fun updateData(newItems: List<QueueInfoItem>) {
-        // Reset input map for new data load
+    fun resetInputs() {
         inputQtyMap.clear()
+        notifyDataSetChanged()
+    }
+ 
+    fun updateData(newItems: List<QueueInfoItem>, pendingMap: Map<String, Int> = emptyMap()) {
+        // Reset input map and load pending values from DB
+        inputQtyMap.clear()
+        inputQtyMap.putAll(pendingMap)
         this.items = newItems
         notifyDataSetChanged()
     }
@@ -58,8 +65,7 @@ class QueueInfoAdapter(
             tvRemaining.text = (item.balQty ?: 0).toString()
             tvToday.text = (item.today ?: 0).toString()
 
-            // Restore from map, default to today's value or 0
-            val currentQty = inputQtyMap.getOrPut(sizeKey) { item.today ?: 0 }
+            val currentQty = inputQtyMap.getOrPut(sizeKey) { 0 }
             tvInputQty.text = currentQty.toString()
 
             val updateQty = { change: Int ->
@@ -67,6 +73,7 @@ class QueueInfoAdapter(
                 val clamped = if (newQty < 0) 0 else newQty
                 inputQtyMap[sizeKey] = clamped
                 tvInputQty.text = clamped.toString()
+                onQtyChanged(sizeKey, clamped)
             }
 
             btnMinus10.setOnClickListener { updateQty(-10) }

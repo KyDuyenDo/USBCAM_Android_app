@@ -13,6 +13,8 @@ class QueueSidebarAdapter(
     private val onRySelected: (SearchRyItem) -> Unit
 ) : RecyclerView.Adapter<QueueSidebarAdapter.SidebarViewHolder>() {
 
+    private var dirtyRys: Set<String> = emptySet()
+
     private var apiResults: List<SearchRyItem> = emptyList()
     private var displayItems: List<SearchRyItem> = queuedItems
     
@@ -25,6 +27,11 @@ class QueueSidebarAdapter(
     fun updateQueuedItems(newQueued: List<SearchRyItem>) {
         this.queuedItems = newQueued
         updateDisplayItems("")
+    }
+
+    fun updateDirtyRys(dirty: Set<String>) {
+        this.dirtyRys = dirty
+        notifyDataSetChanged()
     }
 
     fun updateApiResults(results: List<SearchRyItem>, query: String) {
@@ -65,10 +72,21 @@ class QueueSidebarAdapter(
 
     inner class SidebarViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvSidebarRy: TextView = itemView.findViewById(R.id.tv_sidebar_ry)
+        private val tvSyncStatus: TextView = itemView.findViewById(R.id.tv_sync_status)
         private val btnAdd: View = itemView.findViewById(R.id.btn_add_to_queue_sidebar)
 
         fun bind(item: SearchRyItem, isSelected: Boolean) {
             tvSidebarRy.text = item.zlbh ?: item.ry ?: "---"
+            
+            val isDirty = dirtyRys.contains(item.ry ?: "")
+            tvSyncStatus.visibility = View.VISIBLE
+            if (isDirty) {
+                tvSyncStatus.text = "Chờ"
+                tvSyncStatus.setTextColor(Color.parseColor("#FFA500")) // Orange
+            } else {
+                tvSyncStatus.text = "Lưu"
+                tvSyncStatus.setTextColor(Color.parseColor("#4CAF50")) // Green
+            }
             
             val isQueued = QueueManager.queuedItems.any { it.ry == item.ry }
             btnAdd.visibility = if (isQueued) View.GONE else View.VISIBLE

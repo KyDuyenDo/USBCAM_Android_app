@@ -1,107 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="28dp"
     android:background="@drawable/bg_dialog">
 
-    <TextView
+    <!-- Header Section -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Chọn dây chuyền sản xuất"
-        android:textColor="@color/black"
-        android:textSize="20sp"
-        android:textStyle="bold"
+        android:orientation="vertical"
         android:gravity="center"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="24dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Nhà máy:"
-        android:textColor="@color/black"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cấu hình Dây chuyền"
+            android:textColor="#1A1C20"
+            android:textSize="22sp"
+            android:fontFamily="sans-serif-medium"
+            android:textStyle="bold" />
 
-    <Spinner
-        android:id="@+id/spinner_factory"
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vui lòng chọn đơn vị sản xuất của bạn"
+            android:textColor="#718096"
+            android:textSize="14sp"
+            android:layout_marginTop="4dp" />
+    </LinearLayout>
+
+    <!-- Content Section -->
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@drawable/bg_input"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Loại:"
-        android:textColor="@color/black"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="24dp">
 
-    <Spinner
-        android:id="@+id/spinner_type"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@drawable/bg_input"
-        android:layout_marginBottom="16dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Vị trí:"
-        android:textColor="@color/black"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
+            <!-- Factory -->
+            <TextView
+                style="@style/LabelStyle"
+                android:text="Nhà máy" />
+            <FrameLayout
+                style="@style/SpinnerContainerStyle">
+                <Spinner
+                    android:id="@+id/spinner_factory"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@null"
+                    android:overlapAnchor="false"
+                    android:spinnerMode="dropdown" />
+                <ImageView
+                    style="@style/SpinnerArrowStyle" />
+            </FrameLayout>
 
-    <Spinner
-        android:id="@+id/spinner_location"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@drawable/bg_input"
-        android:layout_marginBottom="16dp" />
+            <!-- Type -->
+            <TextView
+                style="@style/LabelStyle"
+                android:layout_marginTop="16dp"
+                android:text="Loại" />
+            <FrameLayout
+                style="@style/SpinnerContainerStyle">
+                <Spinner
+                    android:id="@+id/spinner_type"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@null"
+                    android:overlapAnchor="false"
+                    android:spinnerMode="dropdown" />
+                <ImageView
+                    style="@style/SpinnerArrowStyle" />
+            </FrameLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Đơn vị:"
-        android:textColor="@color/black"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
+            <!-- Location -->
+            <TextView
+                style="@style/LabelStyle"
+                android:layout_marginTop="16dp"
+                android:text="Khu vực / Vị trí" />
+            <FrameLayout
+                style="@style/SpinnerContainerStyle">
+                <Spinner
+                    android:id="@+id/spinner_location"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@null"
+                    android:overlapAnchor="false"
+                    android:spinnerMode="dropdown" />
+                <ImageView
+                    style="@style/SpinnerArrowStyle" />
+            </FrameLayout>
 
-    <Spinner
-        android:id="@+id/spinner_department"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@drawable/bg_input"
-        android:layout_marginBottom="24dp" />
+            <!-- Department -->
+            <TextView
+                style="@style/LabelStyle"
+                android:layout_marginTop="16dp"
+                android:text="Đơn vị / Chuyền" />
+            <FrameLayout
+                style="@style/SpinnerContainerStyle">
+                <Spinner
+                    android:id="@+id/spinner_department"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@null"
+                    android:overlapAnchor="false"
+                    android:spinnerMode="dropdown" />
+                <ImageView
+                    style="@style/SpinnerArrowStyle" />
+            </FrameLayout>
 
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Action Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end">
+        android:gravity="center_vertical">
 
-        <Button
-            android:id="@+id/btn_cancel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Hủy"
-            android:backgroundTint="@color/gray"
-            android:textColor="@color/white"
-            android:layout_marginEnd="8dp" />
 
-        <Button
+        <View
+            android:layout_width="16dp"
+            android:layout_height="0dp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_select"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:backgroundTint="@color/primary_blue"
-            android:textColor="@color/white"
-            android:text="Xác nhận" />
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1.5"
+            android:text="Xác nhận"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:backgroundTint="@color/primary_blue"
+            app:cornerRadius="12dp"
+            app:elevation="4dp" />
 
     </LinearLayout>
 

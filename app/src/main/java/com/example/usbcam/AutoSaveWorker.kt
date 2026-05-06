@@ -47,8 +47,8 @@ class AutoSaveWorker(
                 )
                 val response = api.saveStitchingData(entry.serverCode, request)
                 if (response.isSuccessful) {
-                    db.markSynced(entry.id)
-                    Log.d("AutoSaveWorker", "Synced entry id=${entry.id} size=${entry.gsbh}")
+                    db.deleteEntry(entry.id)
+                    Log.d("AutoSaveWorker", "Synced and deleted entry id=${entry.id} size=${entry.gsbh}")
                 } else {
                     Log.e("AutoSaveWorker", "Failed entry id=${entry.id}: ${response.code()}")
                     allOk = false

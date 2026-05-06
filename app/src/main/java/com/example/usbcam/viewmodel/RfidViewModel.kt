@@ -146,7 +146,7 @@ class RfidViewModel(
         list.add(TagRead(rssi, antenna, channel))
 
         _scannedEpcs.add(trimmedEpc)
-        _lastEpc.value = trimmedEpc
+       // _lastEpc.value = trimmedEpc
         _lastRssi.value = rssi
     }
 

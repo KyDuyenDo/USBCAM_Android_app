@@ -56,6 +56,8 @@ class QueueInfoDialogFragment : DialogFragment() {
         const val SERVER_CODE  = "LHG"
         const val DEFAULT_USER = "SYSTEM"
 
+        private const val TAG = "QueueInfoDialogFragment"
+
         fun newInstance(): QueueInfoDialogFragment = QueueInfoDialogFragment()
     }
 
@@ -79,18 +81,28 @@ class QueueInfoDialogFragment : DialogFragment() {
         btnClearSearchQueued = view.findViewById(R.id.btn_clear_search_queued)
 
         dbHelper = ProductionDbHelper(requireContext())
+        dbHelper.clearAllSynced()
 
         currentIndex = 0
         setupUI()
         setupSidebar()
         setupSizesRecyclerView()
         setupSearch()
+        
+        refreshDirtyStatus()
         loadCurrentRy()
 
         // Start hourly auto-save scheduler
         AutoSaveScheduler.start(requireContext())
 
         return view
+    }
+
+    private fun refreshDirtyStatus() {
+        lifecycleScope.launch {
+            val dirty = withContext(Dispatchers.IO) { dbHelper.getDirtyRys() }
+            sidebarAdapter.updateDirtyRys(dirty)
+        }
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -169,9 +181,44 @@ class QueueInfoDialogFragment : DialogFragment() {
     }
 
     private fun setupSizesRecyclerView() {
-        sizesAdapter = QueueInfoAdapter(emptyList())
+        sizesAdapter = QueueInfoAdapter(emptyList()) { size, qty ->
+            saveSingleEntryToDb(size, qty)
+        }
         rvQueueSizes.layoutManager = GridLayoutManager(context, 3)
         rvQueueSizes.adapter = sizesAdapter
+    }
+
+    /**
+     * Saves a single size entry to DB immediately.
+     */
+    private fun saveSingleEntryToDb(size: String, qty: Int) {
+        val currentItem = sidebarAdapter.selectedRy ?: return
+        val scbh = currentItem.ry ?: return
+
+        val depNo    = LinePreferences.getSelectedLine(requireContext())
+        val gxlb     = LinePreferences.getSelectedGxlb(requireContext())
+        val gsbh     = LinePreferences.getSelectedFactory(requireContext())
+        val ts       = TimeSlotUtil.getCurrentTs()
+        val userDate = dateFormatter.format(Date())
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            dbHelper.upsertEntry(
+                scbh        = scbh,
+                depNo       = depNo ?: "",
+                gsbh        = gsbh ?: "",
+                xxcc        = size,
+                userId      = DEFAULT_USER,
+                inputSource = "CAMERA_MANUAL",
+                gxlb        = gxlb,
+                qty         = qty,
+                userDate    = userDate,
+                ts          = ts,
+                serverCode  = gsbh ?: ""
+            )
+            withContext(Dispatchers.Main) {
+                refreshDirtyStatus()
+            }
+        }
     }
 
     // ── Data Loading ───────────────────────────────────────────────────────
@@ -197,7 +244,8 @@ class QueueInfoDialogFragment : DialogFragment() {
                     apiService.getInfoForRy(ry, gxlb)
                 }
                 if (response.isSuccessful) {
-                    sizesAdapter.updateData(response.body() ?: emptyList())
+                    val pendingQtys = withContext(Dispatchers.IO) { dbHelper.getPendingQtysForRy(ry) }
+                    sizesAdapter.updateData(response.body() ?: emptyList(), pendingQtys)
                 } else {
                     Log.e("QueueInfoDialog", "Error fetching data: ${response.code()}")
                 }
@@ -238,10 +286,11 @@ class QueueInfoDialogFragment : DialogFragment() {
                 qty         = qty,
                 userDate    = userDate,
                 ts          = ts,
-                serverCode  = SERVER_CODE
+                serverCode  = gsbh ?: ""
             )
         }
         Log.d("QueueInfoDialog", "saveCurrentToDb: source=$source ts=$ts depNo=$depNo items=${sizesAdapter.getInputEntries().size}")
+        refreshDirtyStatus()
     }
 
     /**
@@ -254,6 +303,8 @@ class QueueInfoDialogFragment : DialogFragment() {
             val pending = withContext(Dispatchers.IO) { dbHelper.getPendingEntries() }
             var successCount = 0
             var failCount = 0
+
+            Log.w(TAG, pending.toString())
 
             for (entry in pending) {
                 try {
@@ -268,16 +319,16 @@ class QueueInfoDialogFragment : DialogFragment() {
                         qty         = entry.qty,
                         userDate    = entry.userDate
                     )
-                    val response = withContext(Dispatchers.IO) {
-                        apiService.saveStitchingData(entry.serverCode, request)
-                    }
-                    if (response.isSuccessful) {
-                        withContext(Dispatchers.IO) { dbHelper.markSynced(entry.id) }
-                        successCount++
-                    } else {
-                        Log.e("QueueInfoDialog", "confirm fail ${entry.id}: ${response.code()}")
-                        failCount++
-                    }
+                     val response = withContext(Dispatchers.IO) {
+                         apiService.saveStitchingData(entry.serverCode, request)
+                     }
+                     if (response.isSuccessful) {
+                         withContext(Dispatchers.IO) { dbHelper.deleteEntry(entry.id) }
+                         successCount++
+                     } else {
+                         Log.e("QueueInfoDialog", "confirm fail ${entry.id}: ${response.code()}")
+                         failCount++
+                     }
                 } catch (e: Exception) {
                     Log.e("QueueInfoDialog", "confirm exception ${entry.id}", e)
                     failCount++
@@ -291,12 +342,17 @@ class QueueInfoDialogFragment : DialogFragment() {
 
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             
+            refreshDirtyStatus()
+            
             // Refresh local UI with latest data from server
             val selectedItem = sidebarAdapter.selectedRy
             val ry = selectedItem?.ry
             if (ry != null) {
                 fetchData(ry)
+                // Reset deltas to 0 after successful confirm
+                sizesAdapter.resetInputs()
             }
         }
     }
+
 }

@@ -71,37 +71,42 @@ class ProductionDbHelper(context: Context) :
         val db = writableDatabase
         val now = System.currentTimeMillis().toString()
 
-        val existing = db.query(
+        // Check for existing unsynced record for same RY and Size
+        val cursor = db.query(
             TABLE_ENTRIES,
-            arrayOf(COL_ID),
-            "$COL_SCBH=? AND $COL_GSBH=? AND $COL_TS=? AND $COL_SYNCED=0",
-            arrayOf(scbh, gsbh, ts.toString()),
+            arrayOf(COL_ID, COL_QTY),
+            "$COL_SCBH=? AND $COL_XXCC=? AND $COL_SYNCED=0",
+            arrayOf(scbh, xxcc),
             null, null, null
         )
 
-        val cv = ContentValues().apply {
-            put(COL_SCBH, scbh)
-            put(COL_DEPNO, depNo)
-            put(COL_GSBH, gsbh)
-            put(COL_XXCC, xxcc)
-            put(COL_USERID, userId)
-            put(COL_INPUT_SRC, inputSource)
-            put(COL_GXLB, gxlb)
-            put(COL_QTY, qty)
-            put(COL_USER_DATE, userDate)
-            put(COL_TS, ts)
-            put(COL_SERVER_CODE, serverCode)
-            put(COL_CREATED_AT, now)
-        }
-
-        if (existing.moveToFirst()) {
-            val id = existing.getLong(0)
+        if (cursor.moveToFirst()) {
+            val id = cursor.getLong(0)
+            val cv = ContentValues().apply {
+                put(COL_QTY, qty)
+                put(COL_CREATED_AT, now)
+                put(COL_INPUT_SRC, inputSource)
+            }
             db.update(TABLE_ENTRIES, cv, "$COL_ID=?", arrayOf(id.toString()))
         } else {
-            cv.put(COL_SYNCED, 0)
+            val cv = ContentValues().apply {
+                put(COL_SCBH, scbh)
+                put(COL_DEPNO, depNo)
+                put(COL_GSBH, gsbh)
+                put(COL_XXCC, xxcc)
+                put(COL_USERID, userId)
+                put(COL_INPUT_SRC, inputSource)
+                put(COL_GXLB, gxlb)
+                put(COL_QTY, qty)
+                put(COL_USER_DATE, userDate)
+                put(COL_TS, ts)
+                put(COL_SERVER_CODE, serverCode)
+                put(COL_CREATED_AT, now)
+                put(COL_SYNCED, 0)
+            }
             db.insert(TABLE_ENTRIES, null, cv)
         }
-        existing.close()
+        cursor.close()
     }
 
     /** Return all pending (not yet synced) entries */
@@ -141,6 +146,54 @@ class ProductionDbHelper(context: Context) :
         val db = writableDatabase
         val cv = ContentValues().apply { put(COL_SYNCED, 1) }
         db.update(TABLE_ENTRIES, cv, "$COL_ID=?", arrayOf(id.toString()))
+    }
+
+    /** Get map of size -> total pending qty for a specific RY */
+    fun getPendingQtysForRy(scbh: String): Map<String, Int> {
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_ENTRIES,
+            arrayOf(COL_XXCC, COL_QTY),
+            "$COL_SCBH=? AND $COL_SYNCED=0",
+            arrayOf(scbh),
+            null, null, null
+        )
+        val map = mutableMapOf<String, Int>()
+        while (cursor.moveToNext()) {
+            val size = cursor.getString(0)
+            val qty = cursor.getInt(1)
+            map[size] = (map[size] ?: 0) + qty
+        }
+        cursor.close()
+        return map
+    }
+
+    /** Return set of RY (scbh) that have pending changes */
+    fun getDirtyRys(): Set<String> {
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_ENTRIES, arrayOf(COL_SCBH),
+            "$COL_SYNCED=0", null,
+            COL_SCBH, null, null
+        )
+        val set = mutableSetOf<String>()
+        while (cursor.moveToNext()) {
+            set.add(cursor.getString(0))
+        }
+        cursor.close()
+        return set
+    }
+
+    /** Delete an entry from the database */
+    fun deleteEntry(id: Long) {
+        val db = writableDatabase
+        db.delete(TABLE_ENTRIES, "$COL_ID=?", arrayOf(id.toString()))
+    }
+
+    /** Clear all entries that are marked as synced */
+    fun clearAllSynced() {
+        val db = writableDatabase
+        db.delete(TABLE_ENTRIES, "$COL_SYNCED=1", null)
     }
 }
 

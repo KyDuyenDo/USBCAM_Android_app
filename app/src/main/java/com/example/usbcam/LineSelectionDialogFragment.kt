@@ -51,7 +51,6 @@ class LineSelectionDialogFragment : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.btnCancel.setOnClickListener { dismiss() }
         binding.btnSelect.setOnClickListener {
             selectedDepartment?.id?.let { depId ->
                 val gxlb = if (selectedDepType == 1) "C+S" else "A"

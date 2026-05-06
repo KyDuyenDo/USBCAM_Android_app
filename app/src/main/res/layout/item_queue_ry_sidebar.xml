@@ -23,6 +23,16 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        <TextView
+            android:id="@+id/tv_sync_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Chờ"
+            android:textColor="@color/warning_orange"
+            android:textSize="12sp"
+            android:layout_marginEnd="12dp"
+            android:visibility="gone" />
+
         <ImageView
             android:id="@+id/btn_add_to_queue_sidebar"
             android:layout_width="32dp"
