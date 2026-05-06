@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    android:orientation="vertical">
+
+    <!-- Top Navigation Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:background="#1A1C20">
+
+        <!-- Back Button -->
+        <LinearLayout
+            android:id="@+id/btn_back"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_revert"
+                app:tint="@color/primary_blue"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BACK"
+                android:textColor="@color/primary_blue"
+                android:textStyle="bold"
+                android:layout_marginStart="4dp"/>
+        </LinearLayout>
+
+        <View android:layout_width="24dp" android:layout_height="0dp"/>
+
+        <!-- Titles -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            
+            <TextView
+                android:id="@+id/tv_header_zlbh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AH2512-073"
+                android:textColor="@color/primary_blue"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/tv_header_don"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Đơn: AH2512-073"
+                android:textColor="#888888"
+                android:textSize="12sp"/>
+        </LinearLayout>
+
+        <!-- Right Buttons -->
+        <Button
+            android:id="@+id/btn_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="THIẾT LẬP"
+            android:textColor="@color/primary_blue"
+            android:backgroundTint="#22252A"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/btn_sync"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="ĐỒNG BỘ"
+            android:textColor="@color/black"
+            android:backgroundTint="#FFB300"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#222222"/>
+
+    <!-- Split Screen Content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <!-- Left Sidebar: List of Queued RYs -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_queued_rys"
+            android:layout_width="250dp"
+            android:layout_height="match_parent"
+            android:background="#1A1C20"
+            android:clipToPadding="false"/>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#222222"/>
+
+        <!-- Right Side: Main Content Area -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ZLBH"
+            android:textColor="#888888"
+            android:textSize="12sp"/>
+        
+        <TextView
+            android:id="@+id/tv_main_zlbh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AH2512-073"
+            android:textColor="@color/white"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_queue_sizes"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"/>
+
+        <!-- Confirm Button -->
+        <Button
+            android:id="@+id/btn_confirm"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:text="XÁC NHẬN"
+            android:textColor="@color/black"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:backgroundTint="#00C853"/>
+
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

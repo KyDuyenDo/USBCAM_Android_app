@@ -83,3 +83,46 @@ data class RyDetailItem(
     @SerializedName("OrderQty") val orderQty: Int?,
     @SerializedName("Remain")   val remain: Int?
 )
+
+// /api/search-ry
+data class SearchRyItem(
+    @SerializedName("ZLBH") val zlbh: String?,
+    @SerializedName("QTY") val qty: Int?,
+    @SerializedName("KHPO") val khpo: String?,
+    @SerializedName("ARTICLE") val article: String?,
+    @SerializedName("LEAN") val lean: String?,
+    @SerializedName("COUNTRY") val country: String?,
+    @SerializedName("RY") val ry: String?,
+    @SerializedName("PSDT") val psdt: String?,
+    @SerializedName("PEDT") val pedt: String?,
+    @SerializedName("ImageUrl") val imageUrl: String?
+)
+
+// /api/info-for-ry
+data class QueueInfoItem(
+    @SerializedName("ddbh") val ddbh: String?,
+    @SerializedName("zlbh") val zlbh: String?,
+    @SerializedName("SIZE") val size: String?,
+    @SerializedName("Total") val total: Int?,
+    @SerializedName("Qtyed") val qtyed: Int?,
+    @SerializedName("BalQty") val balQty: Int?,
+    @SerializedName("Today") val today: Int?
+)
+
+// POST /api/save-stitching-data/:serverCode
+data class ScbbContextSaverRequest(
+    @SerializedName("SCBH")        val scbh: String,
+    @SerializedName("DepNo")       val depNo: String,
+    @SerializedName("GSBH")        val gsbh: String,
+    @SerializedName("XXCC")        val xxcc: String,
+    @SerializedName("USERID")      val userId: String,
+    @SerializedName("InputSource") val inputSource: String,
+    @SerializedName("GXLB")       val gxlb: String? = null,
+    @SerializedName("QTY")         val qty: Int,
+    @SerializedName("userDate")    val userDate: String
+)
+
+data class SaveStitchingResponse(
+    @SerializedName("success") val success: Boolean?,
+    @SerializedName("message") val message: String?
+)

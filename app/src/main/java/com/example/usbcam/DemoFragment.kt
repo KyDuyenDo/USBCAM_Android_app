@@ -280,6 +280,11 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             ReportDialogFragment.newInstance(currentLine)
                 .show(parentFragmentManager, "ReportDialog")
         }
+
+        // ── Input Production Button ────────────────────────────────────────────
+        mViewBinding?.btnInputProduction?.setOnClickListener {
+            SearchRyDialogFragment().show(parentFragmentManager, "SearchRyDialog")
+        }
     }
 
     override fun onDestroy() {

@@ -3,7 +3,10 @@ package com.example.usbcam.api
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ReportApiService {
@@ -58,6 +61,24 @@ interface ReportApiService {
     suspend fun getReportDetailByRY(
         @Query("ry") ry: String
     ): Response<List<RyDetailItem>>
+
+    @GET("api/search-ry")
+    suspend fun searchRy(
+        @Query("zlbh") zlbh: String,
+        @Query("serverCode") serverCode: String
+    ): Response<List<SearchRyItem>>
+
+    @GET("api/info-for-ry")
+    suspend fun getInfoForRy(
+        @Query("ry") ry: String,
+        @Query("gxlb") gxlb: String
+    ): Response<List<QueueInfoItem>>
+
+    @POST("api/save-stitching-data/{serverCode}")
+    suspend fun saveStitchingData(
+        @Path("serverCode") serverCode: String,
+        @Body body: ScbbContextSaverRequest
+    ): Response<SaveStitchingResponse>
 
     companion object {
         private const val BASE_URL = "http://192.168.30.169:3001/"
