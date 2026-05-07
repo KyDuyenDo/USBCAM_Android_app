@@ -4,20 +4,38 @@ import android.util.Log
 import com.example.usbcam.api.PoApiService
 import com.example.usbcam.api.PoResponse
 import com.example.usbcam.api.TargetResponse
+import com.example.usbcam.data.db.BoxInfoCacheDao
 import com.example.usbcam.data.db.ShoeboxDao
+import com.example.usbcam.data.model.BoxInfoCache
 import com.example.usbcam.data.model.ShoeboxDetail
 import com.example.usbcam.data.model.ShoeboxTotal
+import com.example.usbcam.data.model.toPoResponse
 import com.example.usbcam.viewmodel.TimeSlotItem
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoApiService) {
+class ShoeboxRepository(
+    private val dao: ShoeboxDao,
+    private val apiService: PoApiService,
+    private val cacheDao: BoxInfoCacheDao? = null  // nullable — backward compat
+) {
 
     // Used when logic is fully delegated to Repository (API + DB)
     suspend fun processScan(po: String, barcode: String, selectedLine: String? = null): com.example.usbcam.data.model.Result<PoResponse> {
-        // 1. Try API first
+        // 🔹 1. Ưu tiên tra cứu từ Box_Info_Cache (load ngầm từ API all-info-box)
+        val cached = lookupCache(po, barcode)
+        if (cached != null) {
+            Log.d("ShoeboxRepo", "📦 Cache hit: UPC=$barcode PO=$po")
+            try { saveLocal(po, barcode, cached, selectedLine) } catch (e: Exception) {
+                Log.e("ShoeboxRepo", "Cache hit but SaveLocal failed: ${e.message}")
+            }
+            return com.example.usbcam.data.model.Result.Success(cached)
+        }
+
+        // 🔹 2. Fallback: gọi API select-po nếu cache chưa có dữ liệu
+        Log.d("ShoeboxRepo", "🌐 Cache miss — gọi API select-po: PO=$po barcode=$barcode")
         try {
             val response = apiService.getPoDetailsSuspend(po, barcode)
             if (response.isSuccessful) {
@@ -43,7 +61,7 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
             e.printStackTrace()
         }
 
-        // 2. Fallback to Local DB if API failed
+        // 🔹 3. Fallback toàn bộ cuối: dữ liệu cục bộ từ Data_Shoebox_Total
         Log.d("ShoeboxRepo", "Attempting local fallback for PO=$po, UPC=$barcode")
         val localData = getLocalPoResponse(po, barcode)
         return if (localData != null) {
@@ -56,6 +74,16 @@ class ShoeboxRepository(private val dao: ShoeboxDao, private val apiService: PoA
                 "API failed and no local cache available"
             )
         }
+    }
+
+    /**
+     * Tra cứu Box_Info_Cache theo UPC + PO.
+     * Trả về PoResponse nếu tìm thấy, null nếu cache trống hoặc DAO chưa được inject.
+     */
+    private suspend fun lookupCache(po: String, barcode: String): PoResponse? {
+        val dao2 = cacheDao ?: return null
+        val item = dao2.findByUpcAndPo(upc = barcode, po = po) ?: return null
+        return item.toPoResponse()
     }
 
     /**

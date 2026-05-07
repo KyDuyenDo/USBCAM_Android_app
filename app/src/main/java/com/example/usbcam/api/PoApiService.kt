@@ -1,8 +1,10 @@
 package com.example.usbcam.api
 
 import retrofit2.Call
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -55,15 +57,27 @@ interface PoApiService {
         @Query("line_id") lineId: String
     ): retrofit2.Response<Void>
 
-    companion object {
-        private const val BASE_URL = "http://192.168.30.101:3000/"
+    /** Load toàn bộ thông tin hộp giày theo trang — dùng để build local cache */
+    @GET("api/all-info-box")
+    suspend fun getAllInfoBox(
+        @Query("page")     page: Int,
+        @Query("pagesize") pageSize: Int
+    ): retrofit2.Response<AllInfoBoxResponse>
 
+    companion object {
         fun create(): PoApiService {
+            val client = OkHttpClient.Builder()
+                .connectTimeout(120, TimeUnit.SECONDS)
+                .readTimeout(120, TimeUnit.SECONDS)
+                .writeTimeout(120, TimeUnit.SECONDS)
+                .build()
+
             return Retrofit.Builder()
-                    .baseUrl(BASE_URL)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
-                    .create(PoApiService::class.java)
+                .baseUrl(ApiConfig.BASE_URL)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+                .create(PoApiService::class.java)
         }
     }
 }

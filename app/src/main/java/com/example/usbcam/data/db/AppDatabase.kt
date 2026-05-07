@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.usbcam.data.model.BoxInfoCache
 import com.example.usbcam.data.model.ShoeboxDetail
 import com.example.usbcam.data.model.ShoeboxDetailRfid
 import com.example.usbcam.data.model.ShoeboxTotal
@@ -14,19 +15,21 @@ import com.example.usbcam.data.model.ShoeboxTotal
     entities = [
         ShoeboxDetail::class,
         ShoeboxTotal::class,
-        ShoeboxDetailRfid::class
+        ShoeboxDetailRfid::class,
+        BoxInfoCache::class          // ← Thêm bảng cache mới
     ],
-    version = 2,
+    version = 3,                    // ← Tăng version từ 2 → 3
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun shoeboxDao(): ShoeboxDao
+    abstract fun boxInfoCacheDao(): BoxInfoCacheDao  // ← DAO mới
 
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // Migration from version 1 to 2 (add RFID detail table)
+        // Migration 1 → 2: Thêm bảng RFID mismatch
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("""
@@ -56,6 +59,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 2 → 3: Thêm bảng Box_Info_Cache
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `Box_Info_Cache` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `UPC` TEXT,
+                        `SIZE` TEXT,
+                        `PO` TEXT,
+                        `RY` TEXT,
+                        `Article` TEXT,
+                        `Article_Image` TEXT,
+                        `Quantity` INTEGER,
+                        `CachedAt` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_Box_Info_Cache_UPC` ON `Box_Info_Cache` (`UPC`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_Box_Info_Cache_PO` ON `Box_Info_Cache` (`PO`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_Box_Info_Cache_UPC_PO` ON `Box_Info_Cache` (`UPC`, `PO`)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -63,8 +88,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "shoebox_database"
                 )
-                .addMigrations(MIGRATION_1_2)
-                .fallbackToDestructiveMigration() // For development; remove in production
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .fallbackToDestructiveMigration()
                 .enableMultiInstanceInvalidation()
                 .build()
                 INSTANCE = instance

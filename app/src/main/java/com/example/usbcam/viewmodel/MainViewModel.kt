@@ -21,6 +21,7 @@ import com.example.usbcam.domain.usecase.ProcessCameraWithRfidUseCase
 import com.example.usbcam.domain.usecase.ValidateWithRfidUseCase
 import com.example.usbcam.repository.RfidRepository
 import com.example.usbcam.repository.ShoeboxRepository
+import com.example.usbcam.worker.BoxInfoCacheWorker
 import com.example.usbcam.worker.SyncWorker
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -233,6 +234,27 @@ class MainViewModel(
                 .enqueueUniquePeriodicWork("SyncWork", ExistingPeriodicWorkPolicy.KEEP, syncRequest)
     }
 
+    /**
+     * Chạy BoxInfoCacheWorker một lần ngay khi mở app (OneTimeWorkRequest).
+     * Worker tự bỏ qua nếu cache còn mới (TTL 4 tiếng).
+     */
+    fun startBoxInfoCacheWorker(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = androidx.work.OneTimeWorkRequestBuilder<BoxInfoCacheWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork(
+                BoxInfoCacheWorker.WORK_NAME,
+                androidx.work.ExistingWorkPolicy.KEEP,  // Giữ lại nếu đang chạy
+                request
+            )
+    }
+
     /** Ping device immediately (to report 'online' on app open) */
     fun pingNow(context: Context) {
         viewModelScope.launch {
@@ -344,8 +366,12 @@ class MainViewModelFactory(private val application: Application) : ViewModelProv
             val database = AppDatabase.getDatabase(application.applicationContext)
             val apiService = PoApiService.create()
 
-            // Setup repositories
-            val shoeboxRepository = ShoeboxRepository(database.shoeboxDao(), apiService)
+            // Setup repositories (truyền cacheDao vào ShoeboxRepository)
+            val shoeboxRepository = ShoeboxRepository(
+                dao      = database.shoeboxDao(),
+                apiService = apiService,
+                cacheDao = database.boxInfoCacheDao()
+            )
             val rfidRepository = RfidRepository(apiService)
 
             // Setup use cases

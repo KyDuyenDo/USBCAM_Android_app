@@ -195,6 +195,21 @@ class DemoFragment : CameraFragment(), IPreviewDataCallBack {
             }
         }
 
+        // Theo dõi tiến trình tải cache dữ liệu từ BoxInfoCacheWorker
+        androidx.work.WorkManager.getInstance(requireContext())
+            .getWorkInfosForUniqueWorkLiveData(com.example.usbcam.worker.BoxInfoCacheWorker.WORK_NAME)
+            .observe(viewLifecycleOwner) { workInfos ->
+                val workInfo = workInfos?.firstOrNull()
+                if (workInfo != null && workInfo.state == androidx.work.WorkInfo.State.RUNNING) {
+                    val progress = workInfo.progress.getInt("progress", 0)
+                    val total = workInfo.progress.getInt("total", 0)
+                    mViewBinding?.llCacheLoading?.visibility = View.VISIBLE
+                    mViewBinding?.tvCacheProgress?.text = "Đang tải dữ liệu: $progress / $total"
+                } else {
+                    mViewBinding?.llCacheLoading?.visibility = View.GONE
+                }
+            }
+
         // [BUG-1 FIX] Trì hoãn setupRfidDirect() bằng view.post{} để CameraFragment
         // (base class) kịp hoàn tất khởi tạo USB stack trước khi scan device list.
         view.post {

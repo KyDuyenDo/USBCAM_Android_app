@@ -392,6 +392,38 @@
                             android:text="A1_G01" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/ll_cache_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="16dp"
+                    android:background="@drawable/bg_status_badge"
+                    android:backgroundTint="#CC333333"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="8dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <ProgressBar
+                        style="?android:attr/progressBarStyleSmall"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="8dp"
+                        android:indeterminateTint="@color/white" />
+
+                    <TextView
+                        android:id="@+id/tv_cache_progress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Đang tải dữ liệu: 0"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
             </LinearLayout>
 
             <!-- Column 2: Product Image -->
@@ -731,5 +763,7 @@
 
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Bottom Right Loading UI for Master Data Cache -->
 
 </FrameLayout>

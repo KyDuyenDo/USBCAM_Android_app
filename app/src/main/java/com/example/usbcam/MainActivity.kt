@@ -27,6 +27,9 @@ class MainActivity : AppCompatActivity() {
         // 5. Start Sync Worker
         viewModel.startSyncWorker(this)
 
+        // 5.1 Start Box Info Cache Worker (Load data from API all-info-box)
+        viewModel.startBoxInfoCacheWorker(this)
+
         // 6. Initial Ping (Heartbeat Online)
         viewModel.pingNow(this)
 
