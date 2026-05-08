@@ -16,14 +16,19 @@ import com.example.usbcam.data.model.ShoeboxTotal
         ShoeboxDetail::class,
         ShoeboxTotal::class,
         ShoeboxDetailRfid::class,
-        BoxInfoCache::class          // ← Thêm bảng cache mới
+        BoxInfoCache::class,
+        com.example.usbcam.data.model.FactoryEntity::class,
+        com.example.usbcam.data.model.DepTypeEntity::class,
+        com.example.usbcam.data.model.DepLocationEntity::class,
+        com.example.usbcam.data.model.DepartmentEntity::class
     ],
-    version = 3,                    // ← Tăng version từ 2 → 3
+    version = 5,                    // ← Tăng version từ 4 → 5
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun shoeboxDao(): ShoeboxDao
-    abstract fun boxInfoCacheDao(): BoxInfoCacheDao  // ← DAO mới
+    abstract fun boxInfoCacheDao(): BoxInfoCacheDao
+    abstract fun configCacheDao(): ConfigCacheDao
 
     companion object {
         @Volatile
@@ -81,6 +86,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 3 → 4: Thêm các trường mới cho Box_Info_Cache
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `Box_Info_Cache` ADD COLUMN `TotalQuantity` INTEGER")
+                database.execSQL("ALTER TABLE `Box_Info_Cache` ADD COLUMN `COUNTRY` TEXT")
+                database.execSQL("ALTER TABLE `Box_Info_Cache` ADD COLUMN `LEAN` TEXT")
+                database.execSQL("ALTER TABLE `Box_Info_Cache` ADD COLUMN `Remain` INTEGER")
+            }
+        }
+
+        // Migration 4 → 5: Thêm các bảng cấu hình hệ thống
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS `Config_Factory` (`value` TEXT NOT NULL, `label` TEXT, PRIMARY KEY(`value`))")
+                database.execSQL("CREATE TABLE IF NOT EXISTS `Config_DepType` (`value` INTEGER NOT NULL, `label` TEXT, PRIMARY KEY(`value`))")
+                database.execSQL("CREATE TABLE IF NOT EXISTS `Config_DepLocation` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `depType` INTEGER NOT NULL, `loc` TEXT)")
+                database.execSQL("CREATE TABLE IF NOT EXISTS `Config_Department` (`id` TEXT NOT NULL, `depName` TEXT, `depType` INTEGER NOT NULL, `loc` TEXT NOT NULL, PRIMARY KEY(`id`))")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -88,7 +113,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "shoebox_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .fallbackToDestructiveMigration()
                 .enableMultiInstanceInvalidation()
                 .build()

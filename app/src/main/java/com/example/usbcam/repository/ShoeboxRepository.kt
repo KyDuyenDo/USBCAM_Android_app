@@ -328,6 +328,16 @@ class ShoeboxRepository(
     private fun Date.toDbString(): String = sdf.format(this)
 
     suspend fun getLocalPoResponse(po: String, barcode: String): PoResponse? {
+        // 1. Ưu tiên tra cứu từ Master Data Cache (tải từ all-info-box)
+        val cached = lookupCache(po, barcode)
+        if (cached != null) {
+            Log.d("ShoeboxRepo", "📦 Master Cache hit: UPC=$barcode PO=$po")
+            // Lưu ý: Không cần saveLocal ở đây vì dữ liệu này là Master Data, 
+            // nó sẽ được saveLocal khi user thực hiện quét (processScan)
+            return cached
+        }
+
+        // 2. Fallback: Tra cứu từ bảng tổng hợp quét nội bộ (Data_Shoebox_Total)
         val total = dao.getTotalByUpcAndPo(barcode, po) ?: return null
         val details = dao.getDetailsByUpc(barcode).filter { it.PO == po }
         val image = details.firstOrNull()?.ShoeImage
@@ -340,11 +350,11 @@ class ShoeboxRepository(
                 article = total.Article,
                 articleImage = image,
                 quantity = total.Total_Qty_Scan,
-                zbln = null, // Not stored locally
-                khpo = null, // Not stored locally
-                country = null, // Not stored locally
-                psdt = null, // Not stored locally
-                pedt = null, // Not stored locally
+                zbln = null, 
+                khpo = null, 
+                country = null, 
+                psdt = null, 
+                pedt = null, 
                 qtyOrder = total.Total_Qty_ERP,
                 remainInternal =
                         if (total.Total_Qty_ERP > 0) total.Total_Qty_ERP - total.Total_Qty_Scan

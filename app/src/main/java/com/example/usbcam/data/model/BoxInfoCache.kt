@@ -26,6 +26,11 @@ data class BoxInfoCache(
     val Article: String?,
     val Article_Image: String?,
     val Quantity: Int?,
+    val TotalQuantity: Int?,
+    val COUNTRY: String?,
+    val LEAN: String?,
+    val Remain: Int?,
+    val QuantityERP: Int?,
     val CachedAt: Long = System.currentTimeMillis() // Timestamp lưu cache
 )
 
@@ -40,12 +45,12 @@ fun BoxInfoCache.toPoResponse() = PoResponse(
     quantity     = Quantity,
     zbln         = null,
     khpo         = null,
-    country      = null,
+    country      = COUNTRY,
     psdt         = null,
     pedt         = null,
-    qtyOrder     = Quantity,
-    remainInternal = null,
-    doneInternal   = null,
-    lean           = null
+    qtyOrder     = TotalQuantity ?: Quantity,
+    remainInternal = Remain,
+    doneInternal   = QuantityERP,
+    lean           = LEAN
 )
 

@@ -180,7 +180,7 @@ class RfidViewModel(
 
         Log.d(TAG, "Best EPC determined: $bestEpc with Avg RSSI: $maxAverageRssi")
         if (bestEpc != null) {
-            _lastEpc.postValue(bestEpc)
+            _lastEpc.postValue(bestEpc?:"")
         }
         return bestEpc
     }

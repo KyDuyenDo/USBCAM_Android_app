@@ -27,6 +27,7 @@ class LineSelectionDialogFragment : DialogFragment() {
     private val binding get() = _binding!!
 
     private val apiService = ReportApiService.create()
+    private lateinit var configDao: com.example.usbcam.data.db.ConfigCacheDao
 
     private var factories: List<com.example.usbcam.api.FactoryItem> = emptyList()
     private var depTypes: List<DepTypeItem> = emptyList()
@@ -69,6 +70,8 @@ class LineSelectionDialogFragment : DialogFragment() {
                 Toast.makeText(requireContext(), "Vui lòng chọn đơn vị", Toast.LENGTH_SHORT).show()
             }
         }
+
+        configDao = com.example.usbcam.data.db.AppDatabase.getDatabase(requireContext()).configCacheDao()
 
         setupSpinners()
         fetchFactories()
@@ -132,25 +135,27 @@ class LineSelectionDialogFragment : DialogFragment() {
     private fun fetchFactories() {
         lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) { apiService.getFactory() }
-                if (response.isSuccessful && response.body() != null) {
-                    factories = response.body()!!
-                    val labels = mutableListOf("Chọn nhà máy")
-                    labels.addAll(factories.map { it.label ?: "N/A" })
-                    val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                    binding.spinnerFactory.adapter = adapter
-
-                    // Restore saved selection
-                    val savedFactory = LinePreferences.getSelectedFactory(requireContext())
-                    if (savedFactory != null) {
-                        val index = factories.indexOfFirst { it.value == savedFactory }
-                        if (index != -1) {
-                            binding.spinnerFactory.setSelection(index + 1)
-                        }
-                    }
+                // 1. Thử lấy từ DB trước
+                val cached = withContext(Dispatchers.IO) { configDao.getFactories() }
+                if (cached.isNotEmpty()) {
+                    factories = cached.map { com.example.usbcam.api.FactoryItem(label = it.label, value = it.value) }
+                    Log.d("LineSelection", "Loaded factories from Cache")
+                    updateFactorySpinner()
                 } else {
-                    Toast.makeText(requireContext(), "Lỗi tải danh sách nhà máy", Toast.LENGTH_SHORT).show()
+                    // 2. Nếu cache trống, tải từ API
+                    val response = withContext(Dispatchers.IO) { apiService.getFactory() }
+                    if (response.isSuccessful && response.body() != null) {
+                        factories = response.body()!!
+                        // Lưu vào cache để dùng lần sau
+                        withContext(Dispatchers.IO) { 
+                            configDao.insertFactories(factories.map { 
+                                com.example.usbcam.data.model.FactoryEntity(value = it.value ?: "", label = it.label) 
+                            })
+                        }
+                        updateFactorySpinner()
+                    } else {
+                        Toast.makeText(requireContext(), "Lỗi tải danh sách nhà máy", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("LineSelection", "Error fetching Factories", e)
@@ -159,32 +164,65 @@ class LineSelectionDialogFragment : DialogFragment() {
         }
     }
 
+    private fun updateFactorySpinner() {
+        val labels = mutableListOf("Chọn nhà máy")
+        labels.addAll(factories.map { it.label ?: "N/A" })
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerFactory.adapter = adapter
+
+        // Restore saved selection
+        val savedFactory = LinePreferences.getSelectedFactory(requireContext())
+        if (savedFactory != null) {
+            val index = factories.indexOfFirst { it.value == savedFactory }
+            if (index != -1) {
+                binding.spinnerFactory.setSelection(index + 1)
+            }
+        }
+    }
+
     private fun fetchDepTypes() {
         lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) { apiService.getDepTypes() }
-                if (response.isSuccessful && response.body() != null) {
-                    depTypes = response.body()!!
-                    val labels = mutableListOf("Chọn loại nhà máy")
-                    labels.addAll(depTypes.map { getLocalLabel(it.label) })
-                    val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                    binding.spinnerType.adapter = adapter
-
-                    // Restore saved selection
-                    val savedType = LinePreferences.getSelectedDepType(requireContext())
-                    if (savedType != -1) {
-                        val index = depTypes.indexOfFirst { it.value == savedType }
-                        if (index != -1) {
-                            binding.spinnerType.setSelection(index + 1)
-                        }
-                    }
+                val cached = withContext(Dispatchers.IO) { configDao.getDepTypes() }
+                if (cached.isNotEmpty()) {
+                    depTypes = cached.map { DepTypeItem(label = it.label, value = it.value) }
+                    Log.d("LineSelection", "Loaded depTypes from Cache")
+                    updateDepTypeSpinner()
                 } else {
-                    Toast.makeText(requireContext(), "Lỗi tải loại nhà máy", Toast.LENGTH_SHORT).show()
+                    val response = withContext(Dispatchers.IO) { apiService.getDepTypes() }
+                    if (response.isSuccessful && response.body() != null) {
+                        depTypes = response.body()!!
+                        withContext(Dispatchers.IO) {
+                            configDao.insertDepTypes(depTypes.map { 
+                                com.example.usbcam.data.model.DepTypeEntity(value = it.value ?: -1, label = it.label) 
+                            })
+                        }
+                        updateDepTypeSpinner()
+                    } else {
+                        Toast.makeText(requireContext(), "Lỗi tải loại nhà máy", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("LineSelection", "Error fetching DepTypes", e)
                 Toast.makeText(requireContext(), "Lỗi kết nối", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun updateDepTypeSpinner() {
+        val labels = mutableListOf("Chọn loại nhà máy")
+        labels.addAll(depTypes.map { getLocalLabel(it.label) })
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerType.adapter = adapter
+
+        // Restore saved selection
+        val savedType = LinePreferences.getSelectedDepType(requireContext())
+        if (savedType != -1) {
+            val index = depTypes.indexOfFirst { it.value == savedType }
+            if (index != -1) {
+                binding.spinnerType.setSelection(index + 1)
             }
         }
     }
@@ -194,28 +232,44 @@ class LineSelectionDialogFragment : DialogFragment() {
         resetDepartmentSpinner()
         lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) { apiService.getDepLocations(depType) }
-                if (response.isSuccessful && response.body() != null) {
-                    depLocations = response.body()!!
-                    val labels = mutableListOf("Chọn vị trí")
-                    labels.addAll(depLocations.map { it.loc ?: "N/A" })
-                    val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                    binding.spinnerLocation.adapter = adapter
-
-                    // Restore saved selection
-                    val savedLoc = LinePreferences.getSelectedLocation(requireContext())
-                    if (savedLoc != null) {
-                        val index = depLocations.indexOfFirst { it.loc == savedLoc }
-                        if (index != -1) {
-                            binding.spinnerLocation.setSelection(index + 1)
-                        }
-                    }
+                val cached = withContext(Dispatchers.IO) { configDao.getDepLocations(depType) }
+                if (cached.isNotEmpty()) {
+                    depLocations = cached.map { DepLocationItem(loc = it.loc) }
+                    Log.d("LineSelection", "Loaded locations from Cache")
+                    updateLocationSpinner()
                 } else {
-                    Toast.makeText(requireContext(), "Lỗi tải vị trí", Toast.LENGTH_SHORT).show()
+                    val response = withContext(Dispatchers.IO) { apiService.getDepLocations(depType) }
+                    if (response.isSuccessful && response.body() != null) {
+                        depLocations = response.body()!!
+                        withContext(Dispatchers.IO) {
+                            configDao.insertDepLocations(depLocations.map { 
+                                com.example.usbcam.data.model.DepLocationEntity(depType = depType, loc = it.loc) 
+                            })
+                        }
+                        updateLocationSpinner()
+                    } else {
+                        Toast.makeText(requireContext(), "Lỗi tải vị trí", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("LineSelection", "Error fetching DepLocations", e)
+            }
+        }
+    }
+
+    private fun updateLocationSpinner() {
+        val labels = mutableListOf("Chọn vị trí")
+        labels.addAll(depLocations.map { it.loc ?: "N/A" })
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerLocation.adapter = adapter
+
+        // Restore saved selection
+        val savedLoc = LinePreferences.getSelectedLocation(requireContext())
+        if (savedLoc != null) {
+            val index = depLocations.indexOfFirst { it.loc == savedLoc }
+            if (index != -1) {
+                binding.spinnerLocation.setSelection(index + 1)
             }
         }
     }
@@ -224,28 +278,49 @@ class LineSelectionDialogFragment : DialogFragment() {
         resetDepartmentSpinner()
         lifecycleScope.launch {
             try {
-                val response = withContext(Dispatchers.IO) { apiService.getDepartments(depType, loc) }
-                if (response.isSuccessful && response.body() != null) {
-                    departments = response.body()!!
-                    val labels = mutableListOf("Chọn đơn vị")
-                    labels.addAll(departments.map { it.depName ?: "N/A" })
-                    val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
-                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                    binding.spinnerDepartment.adapter = adapter
-
-                    // Restore saved selection (Department ID)
-                    val savedLine = LinePreferences.getSelectedLine(requireContext())
-                    if (savedLine != null) {
-                        val index = departments.indexOfFirst { it.id == savedLine }
-                        if (index != -1) {
-                            binding.spinnerDepartment.setSelection(index + 1)
-                        }
-                    }
+                val cached = withContext(Dispatchers.IO) { configDao.getDepartments(depType, loc) }
+                if (cached.isNotEmpty()) {
+                    departments = cached.map { DepartmentItem(id = it.id, depName = it.depName) }
+                    Log.d("LineSelection", "Loaded departments from Cache")
+                    updateDepartmentSpinnerUI()
                 } else {
-                    Toast.makeText(requireContext(), "Lỗi tải đơn vị", Toast.LENGTH_SHORT).show()
+                    val response = withContext(Dispatchers.IO) { apiService.getDepartments(depType, loc) }
+                    if (response.isSuccessful && response.body() != null) {
+                        departments = response.body()!!
+                        withContext(Dispatchers.IO) {
+                            configDao.insertDepartments(departments.map { 
+                                com.example.usbcam.data.model.DepartmentEntity(
+                                    id = it.id ?: "",
+                                    depName = it.depName,
+                                    depType = depType,
+                                    loc = loc
+                                )
+                            })
+                        }
+                        updateDepartmentSpinnerUI()
+                    } else {
+                        Toast.makeText(requireContext(), "Lỗi tải đơn vị", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("LineSelection", "Error fetching Departments", e)
+            }
+        }
+    }
+
+    private fun updateDepartmentSpinnerUI() {
+        val labels = mutableListOf("Chọn đơn vị")
+        labels.addAll(departments.map { it.depName ?: "N/A" })
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, labels)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerDepartment.adapter = adapter
+
+        // Restore saved selection (Department ID)
+        val savedLine = LinePreferences.getSelectedLine(requireContext())
+        if (savedLine != null) {
+            val index = departments.indexOfFirst { it.id == savedLine }
+            if (index != -1) {
+                binding.spinnerDepartment.setSelection(index + 1)
             }
         }
     }

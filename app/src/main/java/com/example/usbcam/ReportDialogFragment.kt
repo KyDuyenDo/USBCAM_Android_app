@@ -371,6 +371,7 @@ class ReportDialogFragment : DialogFragment() {
                 }
             } catch (e: Exception) {
                 Toast.makeText(context, "Lỗi: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e(TAG,"Lỗi: ${e.message}")
             } finally {
                 pb.visibility = View.GONE
             }

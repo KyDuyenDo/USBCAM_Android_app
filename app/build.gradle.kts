@@ -13,7 +13,7 @@ android {
         minSdk = 24
         targetSdk = 33
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -25,6 +25,20 @@ android {
                     getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro"
             )
+        }
+    }
+    applicationVariants.all {
+
+        outputs.all {
+
+            val appName = "scanbox"
+
+            val fileName =
+                "${appName}_${versionName}.apk"
+
+            (this as
+                    com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+                .outputFileName = fileName
         }
     }
     compileOptions {

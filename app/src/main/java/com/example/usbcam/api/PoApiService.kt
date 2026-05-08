@@ -64,6 +64,10 @@ interface PoApiService {
         @Query("pagesize") pageSize: Int
     ): retrofit2.Response<AllInfoBoxResponse>
 
+    /** Kiểm tra phiên bản mới của ứng dụng */
+    @GET("api/app-version")
+    suspend fun getAppVersion(): retrofit2.Response<AppVersionResponse>
+
     companion object {
         fun create(): PoApiService {
             val client = OkHttpClient.Builder()

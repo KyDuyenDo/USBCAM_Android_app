@@ -27,7 +27,7 @@ class BoxInfoCacheWorker(context: Context, workerParams: WorkerParameters) :
 
     companion object {
         private const val TAG = "BoxInfoCacheWorker"
-        private const val PAGE_SIZE = 10000
+        private const val PAGE_SIZE = 100000
 
         /** Thời gian cache hợp lệ: 4 tiếng */
         private const val CACHE_TTL_MS = 4 * 60 * 60 * 1000L
@@ -132,6 +132,11 @@ class BoxInfoCacheWorker(context: Context, workerParams: WorkerParameters) :
         Article = article,
         Article_Image = articleImage,
         Quantity = quantity,
+        TotalQuantity = totalQuantity,
+        COUNTRY = country,
+        LEAN = lean,
+        Remain = remain,
+        QuantityERP = quantityErp,
         CachedAt = System.currentTimeMillis()
     )
 }

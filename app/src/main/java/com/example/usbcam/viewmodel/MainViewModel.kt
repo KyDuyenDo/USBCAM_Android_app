@@ -13,6 +13,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.usbcam.api.AppVersionResponse
 import com.example.usbcam.api.PoApiService
 import com.example.usbcam.api.PoResponse
 import com.example.usbcam.data.db.AppDatabase
@@ -70,6 +71,40 @@ class MainViewModel(
     // RFID Validation result
     private val _validationResult = MutableLiveData<ValidationResult?>()
     val validationResult: LiveData<ValidationResult?> = _validationResult
+
+    // Thông báo cập nhật phiên bản mới
+    private val _updateAvailable = MutableLiveData<AppVersionResponse?>()
+    val updateAvailable: LiveData<AppVersionResponse?> = _updateAvailable
+
+    /**
+     * Kiểm tra phiên bản mới từ server.
+     * Nếu versionCode trên server > versionCode hiện tại, sẽ emit dữ liệu phiên bản mới qua LiveData.
+     * @param currentVersionCode versionCode của APK đang chạy (lấy từ BuildConfig).
+     */
+    fun checkAppVersion(context: android.content.Context) {
+        viewModelScope.launch {
+            try {
+                val currentVersionCode = context.packageManager
+                    .getPackageInfo(context.packageName, 0).versionCode
+                val response = PoApiService.create().getAppVersion()
+                if (response.isSuccessful) {
+                    val serverVersion = response.body()
+                    if (serverVersion != null && serverVersion.versionCode > currentVersionCode) {
+                        Log.i("MainViewModel", "Có phiên bản mới: ${serverVersion.versionName} (code ${serverVersion.versionCode})")
+                        _updateAvailable.postValue(serverVersion)
+                    } else {
+                        Log.d("MainViewModel", "Ứng dụng đang ở phiên bản mới nhất.")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("MainViewModel", "Không thể kiểm tra phiên bản: ${e.message}")
+            }
+        }
+    }
+
+    fun clearUpdateAvailable() {
+        _updateAvailable.postValue(null)
+    }
 
     fun setCameraEnabled(enabled: Boolean) {
         _isCameraEnabled.postValue(enabled)
@@ -251,6 +286,26 @@ class MainViewModel(
             .enqueueUniqueWork(
                 BoxInfoCacheWorker.WORK_NAME,
                 androidx.work.ExistingWorkPolicy.KEEP,  // Giữ lại nếu đang chạy
+                request
+            )
+    }
+
+    /**
+     * Chạy ConfigCacheWorker để tải danh sách Xưởng, Bộ phận, Vị trí.
+     */
+    fun startConfigCacheWorker(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = androidx.work.OneTimeWorkRequestBuilder<com.example.usbcam.worker.ConfigCacheWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork(
+                com.example.usbcam.worker.ConfigCacheWorker.WORK_NAME,
+                androidx.work.ExistingWorkPolicy.KEEP,
                 request
             )
     }
