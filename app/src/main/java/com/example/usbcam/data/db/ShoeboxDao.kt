@@ -55,4 +55,17 @@ interface ShoeboxDao {
 
     @Query("DELETE FROM Data_Shoebox_RFID_Detail WHERE id = :id")
     suspend fun deleteRfidDetail(id: Long)
+
+    // --- Total Modify Operations ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTotalModify(totalModify: com.example.usbcam.data.model.ShoeboxTotalModify)
+
+    @Query("SELECT * FROM Data_Shoebox_Total_Modify WHERE Synced = 0")
+    suspend fun getUnsyncedTotalModifies(): List<com.example.usbcam.data.model.ShoeboxTotalModify>
+
+    @Query("SELECT * FROM Data_Shoebox_Total_Modify WHERE UPC = :upc AND PO = :po AND DateScan LIKE :datePrefix || '%' LIMIT 1")
+    suspend fun getTotalModifyByUpcPoAndDate(upc: String, po: String, datePrefix: String): com.example.usbcam.data.model.ShoeboxTotalModify?
+
+    @Query("UPDATE Data_Shoebox_Total_Modify SET Synced = 1 WHERE Shoebox_Total_Serial = :serial")
+    suspend fun updateTotalModifySynced(serial: Long)
 }

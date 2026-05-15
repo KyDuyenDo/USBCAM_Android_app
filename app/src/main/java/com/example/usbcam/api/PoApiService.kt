@@ -41,6 +41,11 @@ interface PoApiService {
             @retrofit2.http.Body total: com.example.usbcam.data.model.ShoeboxTotal
     ): retrofit2.Response<Void>
 
+    @retrofit2.http.POST("api/sync/total-modify")
+    suspend fun syncTotalModify(
+            @retrofit2.http.Body totalModify: com.example.usbcam.data.model.ShoeboxTotalModify
+    ): retrofit2.Response<Void>
+
 
     @retrofit2.http.POST("api/sync/rfid-mismatch")
     suspend fun syncRfidMismatch(

@@ -10,6 +10,7 @@ import com.example.usbcam.data.model.BoxInfoCache
 import com.example.usbcam.data.model.ShoeboxDetail
 import com.example.usbcam.data.model.ShoeboxDetailRfid
 import com.example.usbcam.data.model.ShoeboxTotal
+import com.example.usbcam.data.model.ShoeboxTotalModify
 
 @Database(
     entities = [
@@ -20,9 +21,10 @@ import com.example.usbcam.data.model.ShoeboxTotal
         com.example.usbcam.data.model.FactoryEntity::class,
         com.example.usbcam.data.model.DepTypeEntity::class,
         com.example.usbcam.data.model.DepLocationEntity::class,
-        com.example.usbcam.data.model.DepartmentEntity::class
+        com.example.usbcam.data.model.DepartmentEntity::class,
+        ShoeboxTotalModify::class
     ],
-    version = 5,                    // ← Tăng version từ 4 → 5
+    version = 6,                    // ← Tăng version từ 5 → 6
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -106,6 +108,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Migration 5 → 6: Thêm bảng Data_Shoebox_Total_Modify
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `Data_Shoebox_Total_Modify` (
+                        `Shoebox_Total_Serial` INTEGER PRIMARY KEY NOT NULL,
+                        `RY` TEXT,
+                        `Size` TEXT,
+                        `PO` TEXT,
+                        `UPC` TEXT,
+                        `Total_Qty_Scan` INTEGER NOT NULL,
+                        `Total_Qty_ERP` INTEGER NOT NULL,
+                        `Article` TEXT,
+                        `DateScan` TEXT,
+                        `Modify` TEXT,
+                        `User_Serial_Key` TEXT,
+                        `Line` TEXT,
+                        `Total_FQty_Scan` INTEGER NOT NULL,
+                        `Synced` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -113,7 +139,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "shoebox_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigration()
                 .enableMultiInstanceInvalidation()
                 .build()

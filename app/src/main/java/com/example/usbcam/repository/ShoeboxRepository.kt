@@ -172,6 +172,52 @@ class ShoeboxRepository(
                     )
                 }
         dao.insertTotal(newTotal)
+
+        // Update Total Modify (grouped by day)
+        updateTotalModify(po, upc, ry, size, article, erpTarget, lineToSave)
+    }
+
+    private suspend fun updateTotalModify(
+        po: String,
+        upc: String,
+        ry: String?,
+        size: String?,
+        article: String?,
+        erpTarget: Int,
+        line: String?
+    ) {
+        val todayPrefix = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val allDetails = dao.getDetailsByUpc(upc).filter { it.PO == po }
+        val dailyDetails = allDetails.filter { it.DateScan.startsWith(todayPrefix) }
+        val dailyQty = dailyDetails.sumOf { it.Qty }
+
+        val existing = dao.getTotalModifyByUpcPoAndDate(upc, po, todayPrefix)
+        val newModify = if (existing != null) {
+            existing.copy(
+                Total_Qty_Scan = dailyQty,
+                Total_Qty_ERP = erpTarget,
+                Modify = getCurrentTime(),
+                Line = line,
+                Synced = 0
+            )
+        } else {
+            com.example.usbcam.data.model.ShoeboxTotalModify(
+                RY = ry,
+                Size = size,
+                PO = po,
+                UPC = upc,
+                Total_Qty_Scan = dailyQty,
+                Total_Qty_ERP = erpTarget,
+                Article = article,
+                DateScan = getCurrentTime(),
+                Modify = getCurrentTime(),
+                User_Serial_Key = "DEVICE",
+                Line = line,
+                Total_FQty_Scan = 0,
+                Synced = 0
+            )
+        }
+        dao.insertTotalModify(newModify)
     }
 
     suspend fun getLatestDetail(): ShoeboxDetail? {
@@ -213,6 +259,18 @@ class ShoeboxRepository(
                 val response = apiService.syncRfidMismatch(rfid)
                 if (response.isSuccessful) {
                     dao.updateRfidDetailSynced(rfid.id)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        val unsyncedTotalModifies = dao.getUnsyncedTotalModifies()
+        unsyncedTotalModifies.forEach { totalModify ->
+            try {
+                val response = apiService.syncTotalModify(totalModify)
+                if (response.isSuccessful) {
+                    dao.updateTotalModifySynced(totalModify.Shoebox_Total_Serial)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

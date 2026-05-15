@@ -63,3 +63,20 @@ data class ShoeboxDetailRfid(
     val Line: String?,
     var Synced: Int = 0 // 0: Not synced, 1: Synced
 )
+@Entity(tableName = "Data_Shoebox_Total_Modify")
+data class ShoeboxTotalModify(
+    @PrimaryKey(autoGenerate = true) val Shoebox_Total_Serial: Long = 0,
+    val RY: String?,
+    val Size: String?,
+    val PO: String?,
+    val UPC: String?,
+    val Total_Qty_Scan: Int,
+    val Total_Qty_ERP: Int,
+    val Article: String?,
+    val DateScan: String?,
+    val Modify: String?,
+    val User_Serial_Key: String?,
+    val Line: String?,
+    val Total_FQty_Scan: Int,
+    var Synced: Int = 0 // 0: Not synced, 1: Synced
+)

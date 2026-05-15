@@ -2,5 +2,6 @@
     "dotrush.roslyn.projectOrSolutionFiles": [],
     "files.watcherExclude": {
         "**/target": true
-    }
+    },
+    "dotnet.defaultSolution": "disable"
 }
