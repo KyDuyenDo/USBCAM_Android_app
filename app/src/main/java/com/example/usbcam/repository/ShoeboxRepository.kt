@@ -110,7 +110,7 @@ class ShoeboxRepository(
                         Modify = getCurrentTime(),
                         Article = data.article,
                         ShoeImage = data.articleImage,
-                        User_Serial_Key = "DEVICE",
+                        User_Serial_Key = "ANDROID",
                         Line = lineToSave,
                         Synced = 0
                 )
@@ -166,7 +166,7 @@ class ShoeboxRepository(
                             Article = article,
                             DateScan = getCurrentTime(),
                             Modify = getCurrentTime(),
-                            User_Serial_Key = "DEVICE",
+                            User_Serial_Key = "ANDROID",
                             Line = lineToSave,
                             Synced = 0
                     )
@@ -211,7 +211,7 @@ class ShoeboxRepository(
                 Article = article,
                 DateScan = getCurrentTime(),
                 Modify = getCurrentTime(),
-                User_Serial_Key = "DEVICE",
+                User_Serial_Key = "ANDROID",
                 Line = line,
                 Total_FQty_Scan = 0,
                 Synced = 0
